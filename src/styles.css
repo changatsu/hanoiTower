@@ -1,0 +1,117 @@
+/* 藍染めの地に木の柱、漆塗り風の円盤。ライト／ダーク両対応 */
+:root {
+  --bg: #e9ecf1;
+  --panel: #f7f8fa;
+  --ink: #1c2433;
+  --muted: #5d6779;
+  --line: #cfd5df;
+  --accent: #2c4a8a;
+  --accent-ink: #ffffff;
+  --wood: #b07a45;
+  --wood-dark: #7d5229;
+  --good: #2f7d4f;
+  --bad: rgba(208, 68, 58, 0.12);
+  --target: #c9a227;
+  --shadow: rgba(20, 30, 50, 0.18);
+  --font-display: "Dela Gothic One", "Hiragino Kaku Gothic StdN", sans-serif;
+  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121722;
+    --panel: #1b2230;
+    --ink: #e8ecf3;
+    --muted: #9aa4b6;
+    --line: #2d3647;
+    --accent: #6f93e0;
+    --accent-ink: #0d1320;
+    --wood: #a06f3f;
+    --wood-dark: #6b4523;
+    --good: #5cc48a;
+    --bad: rgba(230, 90, 80, 0.18);
+    --target: #e0bd4a;
+    --shadow: rgba(0, 0, 0, 0.45);
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 28px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.wrap { max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(28px, 6vw, 40px); margin: 0; letter-spacing: 0.04em; }
+.rule { color: var(--muted); margin: 0; font-size: 14px; line-height: 1.6; max-width: 46ch; }
+
+.stats { display: flex; flex-wrap: wrap; gap: 10px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; display: flex; flex-direction: column; gap: 2px; min-width: 88px; }
+.stat .k, .stat label { font-size: 11px; letter-spacing: 0.08em; color: var(--muted); }
+.stat .v { font-family: var(--font-num); font-size: 22px; font-variant-numeric: tabular-nums; }
+.stat.size { margin-left: auto; }
+select { font: inherit; font-size: 16px; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+
+.board-wrap { position: relative; }
+.board {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.peg { position: absolute; top: 0; bottom: 0; cursor: pointer; transition: background 0.15s; }
+.peg:focus-visible { outline: 3px solid var(--accent); outline-offset: -6px; border-radius: 12px; }
+.peg.hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.peg.bad { background: var(--bad); }
+.rod { position: absolute; left: 50%; width: 10px; transform: translateX(-50%); border-radius: 5px 5px 0 0; background: linear-gradient(90deg, var(--wood-dark), var(--wood) 45%, var(--wood-dark)); }
+.base { position: absolute; left: 3%; right: 3%; height: 14px; border-radius: 4px; background: linear-gradient(180deg, var(--wood), var(--wood-dark)); box-shadow: 0 3px 8px var(--shadow); }
+.peg-label { position: absolute; bottom: 4px; left: 0; right: 0; text-align: center; font-size: 12px; color: var(--muted); letter-spacing: 0.1em; }
+.peg-label .goal { color: var(--target); font-weight: 700; }
+
+.disc {
+  position: absolute;
+  border-radius: 999px;
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.18), inset 0 3px 0 rgba(255, 255, 255, 0.25), 0 2px 4px var(--shadow);
+  transition: left 0.22s ease, top 0.22s ease, transform 0.15s ease;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-num); color: rgba(255, 255, 255, 0.85);
+  pointer-events: none;
+}
+.disc.lifted { transform: translateY(-6px); z-index: 5; box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.18), inset 0 3px 0 rgba(255, 255, 255, 0.25), 0 10px 16px var(--shadow); }
+.disc.dragging { transition: none; z-index: 10; }
+
+.overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.banner { background: var(--panel); border: 2px solid var(--good); border-radius: 12px; padding: 14px 22px; text-align: center; box-shadow: 0 10px 30px var(--shadow); animation: pop 0.35s ease-out; }
+.banner b { font-family: var(--font-display); font-weight: 400; font-size: 26px; display: block; color: var(--good); }
+@keyframes pop { from { transform: scale(0.85); opacity: 0.3; } to { transform: scale(1); opacity: 1; } }
+
+.message { min-height: 1.6em; line-height: 1.6; }
+.message.win { color: var(--good); font-weight: 700; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 10px; }
+button { font: inherit; font-weight: 700; font-size: 15px; padding: 10px 18px; border-radius: 8px; cursor: pointer; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible, select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .disc, .banner, .peg { transition: none; animation: none; }
+}
+@media (max-width: 520px) {
+  .stat.size { margin-left: 0; }
+  .stat { min-width: 0; flex: 1 1 28%; }
+}
