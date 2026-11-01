@@ -37,6 +37,14 @@ function startState(level) {
 
 export default function App() {
   const [unlocked, setUnlocked] = useState(() => load("neko-unlocked") || 1);
+  // 説明文の表示（初期値はオフ。選んだ設定は localStorage に残す）
+  const [showHelp, setShowHelp] = useState(() => load("neko-help") === 1);
+  const toggleHelp = () => {
+    setShowHelp((v) => {
+      save("neko-help", v ? 0 : 1);
+      return !v;
+    });
+  };
   const [game, setGame] = useState(() => startState(load("neko-level") || 1));
   const [selected, setSelected] = useState(null);
   const [shake, setShake] = useState(null);
@@ -156,14 +164,18 @@ export default function App() {
           </span>
         </div>
         <div className="controls">
-          <button onClick={undo} disabled={moves === 0 || won}>
+          <button className={stuck ? "nudge" : undefined} onClick={undo} disabled={moves === 0 || won}>
             1手戻す
           </button>
-          <button onClick={() => goLevel(level)} disabled={moves === 0}>
+          <button className={stuck ? "nudge" : undefined} onClick={() => goLevel(level)} disabled={moves === 0}>
             やり直し
           </button>
+          <button className="help-toggle" onClick={toggleHelp} aria-pressed={showHelp}>
+            説明 {showHelp ? "オン" : "オフ"}
+          </button>
         </div>
-        <p className={`message${stuck ? " warn" : ""}`} role="status">
+        {/* オフのときも読み上げ用には残し、画面からは消す（棚の位置も詰まる） */}
+        <p className={`message${stuck ? " warn" : ""}${showHelp ? "" : " sr-only"}`} role="status">
           {message}
         </p>
       </header>
