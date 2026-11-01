@@ -201,8 +201,6 @@ button { font: inherit; color: inherit; }
 /* 先頭（右端）のねこには足もとにランプの明かり */
 /* 右側の棚は左右反転：先頭（配列の最後）が左端＝通路側に来る */
 .shelf.right .row { flex-direction: row-reverse; }
-.shelf.right .cat-svg { transform: scaleX(-1); }
-.shelf.right .cat-svg text { transform: scaleX(-1); transform-box: fill-box; transform-origin: center; }
 
 /* 先頭の目印：板の通路側の端に光る矢じり */
 .front-tip {

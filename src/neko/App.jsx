@@ -222,7 +222,7 @@ export default function App() {
                       .filter(Boolean)
                       .join(" ")}
                   >
-                    <Cat color={c.color} hidden={c.hidden} happy={complete || won} />
+                    <Cat color={c.color} hidden={c.hidden} happy={complete || won} flip={i % 2 === 1} />
                   </div>
                 ))}
               </div>
