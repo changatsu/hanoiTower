@@ -37,6 +37,14 @@ function startState(level) {
 
 export default function App() {
   const [unlocked, setUnlocked] = useState(() => load("neko-unlocked") || 1);
+  // 説明文の表示（初期値はオフ。選んだ設定は localStorage に残す）
+  const [showHelp, setShowHelp] = useState(() => load("neko-help") === 1);
+  const toggleHelp = () => {
+    setShowHelp((v) => {
+      save("neko-help", v ? 0 : 1);
+      return !v;
+    });
+  };
   const [game, setGame] = useState(() => startState(load("neko-level") || 1));
   const [selected, setSelected] = useState(null);
   const [shake, setShake] = useState(null);
@@ -133,37 +141,42 @@ export default function App() {
   return (
     <div className="neko-app">
       <header className="neko-header">
-        <h1>
-          ねこだな<span className="sub">同じ色のねこを、同じ棚へ</span>
-        </h1>
-        <div className="stats">
+        {/* タイトル行：右にベストと説明の切り替えを小さく置く */}
+        <div className="title-row">
+          <h1>ねこだな</h1>
+          <span className="best">
+            ベスト <b>{best ?? "–"}</b>
+          </span>
+          <button className="help-toggle" onClick={toggleHelp} aria-pressed={showHelp}>
+            説明 {showHelp ? "オン" : "オフ"}
+          </button>
+          <a href="../">ハノイの塔 ›</a>
+        </div>
+        {/* 操作行：レベル・手数・1手戻す・やり直しを 1 行に */}
+        <div className="bar">
           <div className="level-picker">
             <button aria-label="前のレベル" disabled={level <= 1} onClick={() => goLevel(level - 1)}>
               ‹
             </button>
             <span>
-              レベル <b>{level}</b>
+              Lv<b>{level}</b>
             </span>
             <button aria-label="次のレベル" disabled={level >= unlocked} onClick={() => goLevel(level + 1)}>
               ›
             </button>
           </div>
-          <span>
-            手数 <b>{moves}</b>
+          <span className="moves">
+            手数<b>{moves}</b>
           </span>
-          <span>
-            ベスト <b>{best ?? "–"}</b>
-          </span>
-        </div>
-        <div className="controls">
-          <button onClick={undo} disabled={moves === 0 || won}>
+          <button className={`act${stuck ? " nudge" : ""}`} onClick={undo} disabled={moves === 0 || won}>
             1手戻す
           </button>
-          <button onClick={() => goLevel(level)} disabled={moves === 0}>
+          <button className={`act${stuck ? " nudge" : ""}`} onClick={() => goLevel(level)} disabled={moves === 0}>
             やり直し
           </button>
         </div>
-        <p className={`message${stuck ? " warn" : ""}`} role="status">
+        {/* オフのときも読み上げ用には残し、画面からは消す（棚の位置も詰まる） */}
+        <p className={`message${stuck ? " warn" : ""}${showHelp ? "" : " sr-only"}`} role="status">
           {message}
         </p>
       </header>
@@ -210,7 +223,7 @@ export default function App() {
                       .filter(Boolean)
                       .join(" ")}
                   >
-                    <Cat color={c.color} hidden={c.hidden} happy={complete || won} />
+                    <Cat color={c.color} hidden={c.hidden} happy={complete || won} flip={i % 2 === 1} />
                   </div>
                 ))}
               </div>
@@ -243,10 +256,6 @@ export default function App() {
           </div>
         </div>
       )}
-
-      <footer className="neko-footer">
-        <a href="../">ハノイの塔で遊ぶ</a>
-      </footer>
     </div>
   );
 }

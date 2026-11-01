@@ -6,6 +6,7 @@
 export const COLOR_COUNT = 9;
 
 // レベルごとの難しさ。colors: 色の数、cap: 棚に並べる数、empty: 空き棚の数、hidden: ？になる割合
+// cap はスマホでもねこが小さくなりすぎないよう、どのレベルでも 4 にそろえる（難しさは色の数と？で上げる）
 export function levelConfig(level) {
   const table = [
     { colors: 3, cap: 4, empty: 2, hidden: 0 },
@@ -14,11 +15,11 @@ export function levelConfig(level) {
     { colors: 5, cap: 4, empty: 2, hidden: 0.35 },
     { colors: 6, cap: 4, empty: 2, hidden: 0.4 },
     { colors: 7, cap: 4, empty: 2, hidden: 0.45 },
-    { colors: 7, cap: 5, empty: 2, hidden: 0.45 },
-    { colors: 8, cap: 5, empty: 2, hidden: 0.5 },
+    { colors: 7, cap: 4, empty: 2, hidden: 0.5 },
+    { colors: 8, cap: 4, empty: 2, hidden: 0.5 },
   ];
   if (level <= table.length) return table[Math.max(1, level) - 1];
-  return { colors: COLOR_COUNT, cap: 5, empty: 2, hidden: 0.55 };
+  return { colors: COLOR_COUNT, cap: 4, empty: 2, hidden: 0.55 };
 }
 
 // 再現できる乱数（同じレベルは毎回同じ盤面になる）
