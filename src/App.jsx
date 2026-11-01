@@ -205,6 +205,10 @@ export default function App() {
           {demo ? "お手本を止める" : "お手本を見る"}
         </button>
       </div>
+
+      <p className="other-game">
+        <a href="./neko/">ねこの色仕分けパズル「ねこだな」で遊ぶ</a>
+      </p>
     </div>
   );
 }
