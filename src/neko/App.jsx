@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Cat, CAT_COLORS } from "./Cat.jsx";
 import {
   applyMove,
@@ -9,6 +9,7 @@ import {
   isSolved,
   movableCount,
 } from "./logic.js";
+import { SHELF_PAD_X, fitCatWidth } from "./layout.js";
 
 const HINT = "真ん中の通路側が先頭です。棚をタップして先頭のねこを持ち上げ、同じ色のねこが先頭にいる棚か、空いている棚をタップします。";
 
@@ -29,6 +30,7 @@ function save(key, v) {
   }
 }
 const bestKey = (level) => `neko-best-${level}`;
+
 
 function startState(level) {
   const { shelves, cap } = createLevel(level);
@@ -51,6 +53,33 @@ export default function App() {
   const [best, setBest] = useState(() => load(bestKey(game.level)));
 
   const { level, cap, shelves, history } = game;
+
+  // 盤面を画面に収める：画面の大きさや段数が変わるたびに、ねこの大きさを計算し直す
+  const boardRef = useRef(null);
+  const [colW, setColW] = useState(null);
+  const rows = Math.ceil(shelves.length / 2);
+  useLayoutEffect(() => {
+    const fit = () => {
+      const el = boardRef.current;
+      if (!el) return;
+      const app = el.parentElement;
+      const appStyle = getComputedStyle(app);
+      const width = app.clientWidth - parseFloat(appStyle.paddingLeft) - parseFloat(appStyle.paddingRight);
+      const bottom = app.getBoundingClientRect().bottom - parseFloat(appStyle.paddingBottom);
+      const height = bottom - el.getBoundingClientRect().top;
+      const aisle = parseFloat(getComputedStyle(el).columnGap) || 26;
+      const catW = fitCatWidth({ width, height, aisle, rows, cap });
+      setColW(catW * cap + SHELF_PAD_X);
+    };
+    fit();
+    document.fonts?.ready.then(fit); // 見出しのフォントが読み込まれると上の欄の高さが変わる
+    window.addEventListener("resize", fit);
+    window.visualViewport?.addEventListener("resize", fit);
+    return () => {
+      window.removeEventListener("resize", fit);
+      window.visualViewport?.removeEventListener("resize", fit);
+    };
+  }, [rows, cap, showHelp]);
   const moves = history.length;
   const won = isSolved(shelves, cap);
   const stuck = !won && !hasAnyMove(shelves, cap);
@@ -181,7 +210,7 @@ export default function App() {
         </p>
       </header>
 
-      <main className="shelves" style={{ "--cap": cap }}>
+      <main ref={boardRef} className="shelves" style={{ "--cap": cap, ...(colW && { "--col-w": `${colW}px` }) }}>
         <div className="aisle" aria-hidden="true" />
         {shelves.map((shelf, i) => {
           const complete = isShelfComplete(shelf, cap);
