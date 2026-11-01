@@ -17,14 +17,19 @@ const BODY = "M28 96 C22 80 26 62 38 56 L62 56 C74 62 78 80 72 96 Z";
 const EAR_L = "M27 32 L29 6 L49 22 Z";
 const EAR_R = "M73 32 L71 6 L51 22 Z";
 
+// 絵の左右の余白を切り詰めた viewBox（しっぽ側 x≈98 まで、ひげ側 x≈18 から）。
+// 棚の 1 マスを無駄なく使って、ねこを大きく見せる。
+export const CAT_VIEWBOX = "16 2 84 98";
+const FLIP = "matrix(-1 0 0 1 116 0)"; // viewBox の中心 x=58 で左右反転
+
 // flip: 右側の棚用に左右反転する。文字（しるし）は反転させないので、図形だけを <g> で反転する。
 // （CSS の transform で SVG ごと反転させると、iOS Safari で文字の位置がずれるため）
 export function Cat({ color, hidden, happy, flip }) {
   if (hidden) return <HiddenCat />;
   const c = CAT_COLORS[color];
   return (
-    <svg viewBox="0 0 100 100" className="cat-svg" aria-hidden="true">
-      <g transform={flip ? "matrix(-1 0 0 1 100 0)" : undefined}>
+    <svg viewBox={CAT_VIEWBOX} className="cat-svg" aria-hidden="true">
+      <g transform={flip ? FLIP : undefined}>
         {/* しっぽ */}
         <path d="M70 90 C92 90 94 70 86 62" fill="none" stroke={c.shade} strokeWidth="8" strokeLinecap="round" />
         <path d={BODY} fill={c.fill} stroke={c.ink} strokeWidth="2.5" strokeLinejoin="round" />
@@ -75,7 +80,7 @@ export function Cat({ color, hidden, happy, flip }) {
         <path d="M36 58 Q50 64 64 58" fill="none" stroke={c.collar} strokeWidth="4" strokeLinecap="round" />
         <circle cx="50" cy="67" r="7" fill="#fff8e6" stroke={c.ink} strokeWidth="1.5" />
       </g>
-      <text x="50" y="70.5" textAnchor="middle" fontSize="10" fill={c.ink} fontWeight="700">
+      <text x={flip ? 66 : 50} y="70.5" textAnchor="middle" fontSize="10" fill={c.ink} fontWeight="700">
         {c.mark}
       </text>
     </svg>
@@ -85,7 +90,7 @@ export function Cat({ color, hidden, happy, flip }) {
 // 色がまだわからない猫：ブランケットをかぶって顔が見えない
 function HiddenCat() {
   return (
-    <svg viewBox="0 0 100 100" className="cat-svg" aria-hidden="true">
+    <svg viewBox="8 2 84 98" className="cat-svg" aria-hidden="true">
       <path
         d="M22 97 C16 70 22 30 30 16 L37 26 C45 20 55 20 63 26 L70 16 C78 30 84 70 78 97 Z"
         fill="#5b5480"
