@@ -292,6 +292,16 @@ button { font: inherit; color: inherit; }
 .win-cats .cat:nth-child(2) { animation-delay: 0.15s; }
 .win-cats .cat:nth-child(3) { animation-delay: 0.3s; }
 .win-card button { display: block; width: 100%; margin-top: 8px; }
+.win-card button.line { background: #06c755; border-color: #06c755; color: #fff; }
+.share-preview {
+  display: block;
+  width: min(220px, 56vw);
+  max-height: 34vh;
+  object-fit: contain;
+  margin: 8px auto 10px;
+  border-radius: 10px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
 .win-card button.primary { background: var(--accent); border-color: var(--accent); color: #2a1a10; }
 @keyframes fade { from { opacity: 0; } }
 

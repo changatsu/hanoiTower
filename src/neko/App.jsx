@@ -10,6 +10,7 @@ import {
   movableCount,
 } from "./logic.js";
 import { SHELF_PAD_X, fitCatWidth } from "./layout.js";
+import { buildShareSvg, shareResult, svgToPngBlob } from "./share.js";
 
 const HINT = "真ん中の通路側が先頭です。棚をタップして先頭のねこを持ち上げ、同じ色のねこが先頭にいる棚か、空いている棚をタップします。";
 
@@ -90,6 +91,27 @@ export default function App() {
     setBest(load(bestKey(lv)));
     save("neko-level", lv);
   }, []);
+
+  // クリアしたら共有用の画像を先に作っておく（共有ボタンを押した瞬間に共有シートを開けるように）
+  const [shareImg, setShareImg] = useState(null); // { file, url }
+  useEffect(() => {
+    if (!won || !boardRef.current) return;
+    let url = null;
+    let alive = true;
+    const svg = buildShareSvg({ boardEl: boardRef.current, cap, level, moves });
+    svgToPngBlob(svg)
+      .then((blob) => {
+        if (!alive) return;
+        url = URL.createObjectURL(blob);
+        setShareImg({ file: new File([blob], `nekodana-lv${level}.png`, { type: "image/png" }), url });
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+      if (url) URL.revokeObjectURL(url);
+      setShareImg(null);
+    };
+  }, [won]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // クリアしたら自己ベストと次のレベルを記録
   useEffect(() => {
@@ -271,13 +293,20 @@ export default function App() {
             <p>
               {moves} 手{best === moves ? "（自己ベスト）" : ""}
             </p>
-            <div className="win-cats" aria-hidden="true">
-              {[0, 2, 7].map((c) => (
-                <div key={c} className="cat">
-                  <Cat color={c} happy />
-                </div>
-              ))}
-            </div>
+            {shareImg ? (
+              <img className="share-preview" src={shareImg.url} alt={`レベル${level}の完成した棚`} />
+            ) : (
+              <div className="win-cats" aria-hidden="true">
+                {[0, 2, 7].map((c) => (
+                  <div key={c} className="cat">
+                    <Cat color={c} happy />
+                  </div>
+                ))}
+              </div>
+            )}
+            <button className="line" onClick={() => shareResult({ file: shareImg?.file, level, moves })}>
+              LINEで送る
+            </button>
             <button className="primary" onClick={() => goLevel(level + 1)}>
               次のレベルへ
             </button>
