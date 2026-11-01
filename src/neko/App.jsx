@@ -10,7 +10,7 @@ import {
   movableCount,
 } from "./logic.js";
 
-const HINT = "右端が先頭です。棚をタップして先頭のねこを持ち上げ、同じ色のねこが先頭にいる棚か、空いている棚をタップします。";
+const HINT = "真ん中の通路側が先頭です。棚をタップして先頭のねこを持ち上げ、同じ色のねこが先頭にいる棚か、空いている棚をタップします。";
 
 // 進み具合と自己ベストはブラウザの localStorage に保存する
 function load(key) {
@@ -130,8 +130,6 @@ export default function App() {
           : "置ける棚がありません。別の棚を選んでください。"
         : HINT;
 
-  const twoCols = shelves.length >= 5;
-
   return (
     <div className="neko-app">
       <header className="neko-header">
@@ -170,7 +168,8 @@ export default function App() {
         </p>
       </header>
 
-      <main className={`shelves${twoCols ? " two-cols" : ""}`} style={{ "--cap": cap }}>
+      <main className="shelves" style={{ "--cap": cap }}>
+        <div className="aisle" aria-hidden="true" />
         {shelves.map((shelf, i) => {
           const complete = isShelfComplete(shelf, cap);
           const run = selected === i ? frontRun(shelf) : 0;
@@ -185,6 +184,7 @@ export default function App() {
               key={i}
               className={[
                 "shelf",
+                i % 2 === 0 ? "left" : "right",
                 selected === i && "selected",
                 targets.has(i) && "target",
                 complete && "complete",
@@ -214,7 +214,9 @@ export default function App() {
                   </div>
                 ))}
               </div>
-              <div className="plank" />
+              <div className="plank">
+                <span className="front-tip" aria-hidden="true" />
+              </div>
             </button>
           );
         })}

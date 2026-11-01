@@ -93,13 +93,28 @@ button { font: inherit; color: inherit; }
 .message.warn { color: var(--accent); }
 
 /* ---- 棚 ---- */
+/* 左右 2 列。どちらの棚も真ん中の通路側が先頭 */
 .shelves {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 320px);
+  grid-template-columns: repeat(2, minmax(0, 330px));
   justify-content: center;
-  gap: 6px 18px;
+  gap: 6px clamp(36px, 11vw, 96px);
 }
-.shelves.two-cols { grid-template-columns: repeat(2, minmax(0, 360px)); }
+/* 真ん中の通路：ランプの光の帯 */
+.aisle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: clamp(36px, 11vw, 96px);
+  transform: translateX(-50%);
+  pointer-events: none;
+  background:
+    radial-gradient(circle, rgba(255, 210, 122, 0.55) 0 2px, transparent 3px) center top / 100% 22px repeat-y,
+    linear-gradient(90deg, transparent, rgba(255, 210, 122, 0.10) 35%, rgba(255, 210, 122, 0.10) 65%, transparent);
+  border-radius: 999px;
+}
 
 .shelf {
   position: relative;
@@ -155,8 +170,29 @@ button { font: inherit; color: inherit; }
 .plank::before { left: 14%; }
 .plank::after { right: 14%; }
 /* 先頭（右端）のねこには足もとにランプの明かり */
+/* 右側の棚は左右反転：先頭（配列の最後）が左端＝通路側に来る */
+.shelf.right .row { flex-direction: row-reverse; }
+.shelf.right .cat-svg { transform: scaleX(-1); }
+.shelf.right .cat-svg text { transform: scaleX(-1); transform-box: fill-box; transform-origin: center; }
+
+/* 先頭の目印：板の通路側の端に光る矢じり */
+.front-tip {
+  position: absolute;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  transform: translateY(-50%);
+  filter: drop-shadow(0 0 4px rgba(255, 210, 122, 0.9));
+}
+.shelf.left .front-tip { right: -12px; border-left: 9px solid var(--glow); }
+.shelf.right .front-tip { left: -12px; border-right: 9px solid var(--glow); }
+.shelf.left .plank { border-right: 3px solid var(--glow); }
+.shelf.right .plank { border-left: 3px solid var(--glow); }
+
 .cat.is-front {
-  background: radial-gradient(ellipse at 50% 100%, rgba(255, 210, 122, 0.35), transparent 60%);
+  background: radial-gradient(ellipse at 50% 100%, rgba(255, 210, 122, 0.5), transparent 65%);
 }
 
 @keyframes hop {
