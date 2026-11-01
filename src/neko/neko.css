@@ -1,0 +1,209 @@
+/* 夜のねこカフェ：藍色の壁に木の棚、ランプの明かり */
+:root {
+  --bg-top: #1e1a33;
+  --bg-bottom: #2d2547;
+  --ink: #f3eee4;
+  --muted: #b9b0cf;
+  --wood: #b9804a;
+  --wood-light: #d6a06a;
+  --wood-dark: #7a4d26;
+  --glow: #ffd27a;
+  --accent: #ff9f6b;
+  --font-display: "Dela Gothic One", "Hiragino Kaku Gothic StdN", sans-serif;
+  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(255, 210, 122, 0.18), transparent 55%),
+    linear-gradient(var(--bg-top), var(--bg-bottom));
+  background-attachment: fixed;
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+}
+
+button { font: inherit; color: inherit; }
+
+.neko-app {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: max(12px, env(safe-area-inset-top)) 12px 32px;
+}
+
+.neko-header { text-align: center; }
+.neko-header h1 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(28px, 7vw, 40px);
+  margin: 4px 0 8px;
+  letter-spacing: 0.06em;
+  color: var(--glow);
+  text-shadow: 0 0 18px rgba(255, 210, 122, 0.35);
+}
+.neko-header h1 .sub {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  text-shadow: none;
+}
+
+.stats {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 14px;
+  color: var(--muted);
+}
+.stats b { color: var(--ink); font-size: 18px; margin-left: 2px; }
+.level-picker { display: flex; align-items: center; gap: 6px; }
+.level-picker button {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.level-picker button:disabled { opacity: 0.3; cursor: default; }
+
+.controls { display: flex; gap: 8px; justify-content: center; margin: 10px 0 6px; }
+.controls button, .win-card button {
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 700;
+}
+.controls button:disabled { opacity: 0.35; cursor: default; }
+
+.message { min-height: 2.6em; margin: 4px auto 8px; max-width: 34em; font-size: 13px; color: var(--muted); }
+.message.warn { color: var(--accent); }
+
+/* ---- 棚 ---- */
+.shelves {
+  display: grid;
+  grid-template-columns: minmax(0, 320px);
+  justify-content: center;
+  gap: 6px 18px;
+}
+.shelves.two-cols { grid-template-columns: repeat(2, minmax(0, 360px)); }
+
+.shelf {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 10px 4px 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 12px;
+  transition: background 0.15s;
+}
+.shelf:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.shelf.selected { background: rgba(255, 255, 255, 0.05); }
+.shelf.target { background: rgba(255, 210, 122, 0.12); box-shadow: 0 0 0 2px rgba(255, 210, 122, 0.55) inset; }
+.shelf.complete { background: radial-gradient(ellipse at 50% 80%, rgba(255, 210, 122, 0.22), transparent 70%); }
+.shelf.shake { animation: shake 0.35s; }
+
+.row {
+  display: flex;
+  align-items: flex-end;
+  /* 1 匹ぶんの幅 = 棚の幅 ÷ 並べられる数 */
+  aspect-ratio: var(--cap) / 1;
+}
+.cat {
+  flex: 0 0 calc(100% / var(--cap));
+  aspect-ratio: 1;
+  transition: transform 0.18s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.cat-svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.35)); }
+.cat.lifted { transform: translateY(-16%); }
+.cat.lifted .cat-svg { filter: drop-shadow(0 0 6px rgba(255, 210, 122, 0.8)); }
+.cat.arrive { animation: hop 0.32s ease-out; }
+.cat.reveal { animation: reveal 0.45s ease-out; }
+
+.plank {
+  position: relative;
+  height: 12px;
+  margin: -2px -4px 0;
+  border-radius: 4px;
+  background: linear-gradient(var(--wood-light), var(--wood) 45%, var(--wood-dark));
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.35);
+}
+.plank::before, .plank::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  width: 8px;
+  height: 14px;
+  background: var(--wood-dark);
+  border-radius: 0 0 6px 6px;
+}
+.plank::before { left: 14%; }
+.plank::after { right: 14%; }
+/* 先頭（右端）のねこには足もとにランプの明かり */
+.cat.is-front {
+  background: radial-gradient(ellipse at 50% 100%, rgba(255, 210, 122, 0.35), transparent 60%);
+}
+
+@keyframes hop {
+  0% { transform: translateY(-40%) scale(0.9); opacity: 0.4; }
+  70% { transform: translateY(4%) scale(1.04, 0.96); opacity: 1; }
+  100% { transform: none; }
+}
+@keyframes reveal {
+  0% { transform: rotateY(90deg); }
+  100% { transform: none; }
+}
+@keyframes shake {
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* ---- クリア ---- */
+.win {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 12, 28, 0.6);
+  animation: fade 0.3s ease-out;
+  padding: 16px;
+}
+.win-card {
+  background: linear-gradient(#3a3060, #2a2348);
+  border: 1px solid rgba(255, 210, 122, 0.4);
+  border-radius: 20px;
+  padding: 22px 26px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  min-width: 260px;
+}
+.win-title { font-family: var(--font-display); font-size: 26px; color: var(--glow); margin: 0 0 4px; }
+.win-cats { display: flex; justify-content: center; --cap: 3; width: 180px; margin: 6px auto 14px; }
+.win-cats .cat { animation: hop 0.6s ease-out infinite alternate; }
+.win-cats .cat:nth-child(2) { animation-delay: 0.15s; }
+.win-cats .cat:nth-child(3) { animation-delay: 0.3s; }
+.win-card button { display: block; width: 100%; margin-top: 8px; }
+.win-card button.primary { background: var(--accent); border-color: var(--accent); color: #2a1a10; }
+@keyframes fade { from { opacity: 0; } }
+
+.neko-footer { text-align: center; margin-top: 28px; font-size: 13px; }
+.neko-footer a { color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cat, .cat.arrive, .cat.reveal, .win-cats .cat, .shelf.shake { animation: none; transition: none; }
+}

@@ -115,3 +115,6 @@ button:focus-visible, select:focus-visible { outline: 3px solid var(--accent); o
   .stat.size { margin-left: 0; }
   .stat { min-width: 0; flex: 1 1 28%; }
 }
+
+.other-game { text-align: center; margin-top: 24px; font-size: 14px; }
+.other-game a { color: var(--muted); }
