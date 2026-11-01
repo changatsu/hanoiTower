@@ -16,9 +16,18 @@
 
 * { box-sizing: border-box; }
 
+/* 画面をスクロールさせない：盤面は App.jsx で画面の高さに収まる大きさに合わせる */
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
 body {
   margin: 0;
-  min-height: 100vh;
+  touch-action: manipulation; /* ダブルタップで拡大されて画面がずれるのを防ぐ */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
   background:
     radial-gradient(ellipse at 50% -10%, rgba(255, 210, 122, 0.18), transparent 55%),
     linear-gradient(var(--bg-top), var(--bg-bottom));
@@ -32,8 +41,9 @@ button { font: inherit; color: inherit; }
 
 .neko-app {
   max-width: 760px;
+  height: 100%;
   margin: 0 auto;
-  padding: max(10px, env(safe-area-inset-top)) 8px 24px;
+  padding: max(10px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
 }
 
 .neko-header { text-align: center; }
@@ -142,9 +152,11 @@ button { font: inherit; color: inherit; }
 .shelves {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 330px));
+  /* 列の幅（--col-w）は App.jsx が画面の幅と高さの両方に収まるように決める */
+  grid-template-columns: repeat(2, var(--col-w, minmax(0, 330px)));
   justify-content: center;
-  gap: 6px clamp(26px, 8vw, 96px);
+  gap: 6px var(--aisle);
+  --aisle: clamp(26px, 8vw, 96px);
 }
 /* 真ん中の通路：ランプの光の帯 */
 .aisle {
@@ -152,7 +164,7 @@ button { font: inherit; color: inherit; }
   top: 0;
   bottom: 0;
   left: 50%;
-  width: clamp(26px, 8vw, 96px);
+  width: var(--aisle);
   transform: translateX(-50%);
   pointer-events: none;
   background:

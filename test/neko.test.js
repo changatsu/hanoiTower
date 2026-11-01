@@ -83,3 +83,17 @@ test("どのレベルも解ける面が作られ、同じレベルは同じ盤�
     assert.deepEqual(createLevel(level), a);
   }
 });
+
+test("盤面は画面の幅と高さの両方に収まる大きさになる", async () => {
+  const { fitCatWidth } = await import("../src/neko/layout.js");
+  // 横長の画面では高さで決まり、縦長の画面では幅で決まる
+  const wide = fitCatWidth({ width: 1000, height: 300, aisle: 80, rows: 6, cap: 4 });
+  const tall = fitCatWidth({ width: 360, height: 2000, aisle: 29, rows: 6, cap: 4 });
+  assert.ok(6 * (wide * (98 / 84) + 20) + 5 * 6 + 14 <= 300);
+  assert.ok(2 * (tall * 4 + 8) + 29 <= 360);
+  // 段が増えても画面に収まる
+  for (let rows = 3; rows <= 6; rows++) {
+    const w = fitCatWidth({ width: 390, height: 640, aisle: 31, rows, cap: 4 });
+    assert.ok(rows * (w * (98 / 84) + 20) + (rows - 1) * 6 + 14 <= 640);
+  }
+});
