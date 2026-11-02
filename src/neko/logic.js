@@ -5,24 +5,41 @@
 
 export const COLOR_COUNT = 9;
 
-// レベルごとの難しさ。colors: 色の数、cap: 棚に並べる数、empty: 空き棚の数、hidden: ？になる割合
-// cap はスマホでもねこが小さくなりすぎないよう、どのレベルでも 4 にそろえる（難しさは色の数と？で上げる）
-export function levelConfig(level) {
-  const table = [
-    { colors: 3, cap: 4, empty: 2, hidden: 0 },
-    { colors: 4, cap: 4, empty: 2, hidden: 0 },
-    { colors: 4, cap: 4, empty: 2, hidden: 0.3 },
-    { colors: 5, cap: 4, empty: 2, hidden: 0.35 },
-    { colors: 6, cap: 4, empty: 2, hidden: 0.4 },
-    { colors: 7, cap: 4, empty: 2, hidden: 0.45 },
-    { colors: 7, cap: 4, empty: 2, hidden: 0.5 },
-    { colors: 8, cap: 4, empty: 2, hidden: 0.5 },
-  ];
-  if (level <= table.length) return table[Math.max(1, level) - 1];
-  return { colors: COLOR_COUNT, cap: 4, empty: 2, hidden: 0.55 };
+// ステージ構成：レベル（初級・中級・上級）ごとに 12 ステージ、全 36 ステージ。
+// 内部では通し番号 no（1〜36）で扱う。初級 1 = 1、中級 1 = 13、上級 1 = 25。
+export const LEVELS = [
+  // colors: 色の数（1 ステージ目 → 12 ステージ目）、hidden: ？になる割合（同）
+  { name: "初級", colors: [3, 5], hidden: [0, 0.25] },
+  { name: "中級", colors: [5, 7], hidden: [0.3, 0.45] },
+  { name: "上級", colors: [7, 9], hidden: [0.45, 0.6] },
+];
+export const STAGES_PER_LEVEL = 12;
+export const TOTAL_STAGES = LEVELS.length * STAGES_PER_LEVEL;
+
+// 通し番号 → { levelIndex, levelName, stage（レベル内の 1〜12）, label }
+export function stageInfo(no) {
+  const n = Math.min(Math.max(1, no), TOTAL_STAGES);
+  const levelIndex = Math.floor((n - 1) / STAGES_PER_LEVEL);
+  const stage = n - levelIndex * STAGES_PER_LEVEL;
+  const levelName = LEVELS[levelIndex].name;
+  return { no: n, levelIndex, levelName, stage, label: `${levelName} ステージ${stage}` };
 }
 
-// 再現できる乱数（同じレベルは毎回同じ盤面になる）
+export const stageNo = (levelIndex, stage) => levelIndex * STAGES_PER_LEVEL + stage;
+
+// ステージごとの難しさ。colors: 色の数、cap: 棚に並べる数、empty: 空き棚の数、hidden: ？になる割合
+// cap はスマホでもねこが小さくなりすぎないよう、どのステージでも 4 にそろえる（難しさは色の数と？で上げる）
+export function stageConfig(no) {
+  const { levelIndex, stage } = stageInfo(no);
+  const lv = LEVELS[levelIndex];
+  const t = (stage - 1) / (STAGES_PER_LEVEL - 1);
+  const colors = Math.round(lv.colors[0] + (lv.colors[1] - lv.colors[0]) * t);
+  // 初級の最初の 3 ステージは？なしで、ルールに慣れてもらう
+  const hidden = levelIndex === 0 && stage <= 3 ? 0 : lv.hidden[0] + (lv.hidden[1] - lv.hidden[0]) * t;
+  return { colors, cap: 4, empty: 2, hidden: Math.round(hidden * 100) / 100 };
+}
+
+// 再現できる乱数（同じステージは毎回同じ盤面になる）
 export function mulberry32(seed) {
   let a = seed >>> 0;
   return () => {
@@ -146,11 +163,11 @@ export function isSolvable(colorShelves, cap, limit = 200000) {
   return dfs(colorShelves) === true;
 }
 
-// レベルの盤面を作る。戻り値 { shelves, cap, colors }
-export function createLevel(level) {
-  const cfg = levelConfig(level);
+// ステージ（通し番号 no）の盤面を作る。戻り値 { shelves, cap, colors }
+export function createStage(no) {
+  const cfg = stageConfig(no);
   for (let attempt = 0; attempt < 200; attempt++) {
-    const rand = mulberry32(level * 7919 + attempt * 104729 + 17);
+    const rand = mulberry32(no * 7919 + attempt * 104729 + 17);
     // 使う色を選ぶ
     const palette = [...Array(COLOR_COUNT).keys()];
     shuffle(palette, rand);

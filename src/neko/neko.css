@@ -89,17 +89,17 @@ button { font: inherit; color: inherit; }
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: clamp(3px, 1.2vw, 6px);
   margin: 10px 0 12px;
   font-size: 13px;
   color: var(--muted);
   white-space: nowrap;
 }
 .bar b { color: var(--ink); font-size: 17px; margin-left: 3px; }
-.level-picker { display: flex; align-items: center; gap: 4px; }
+.level-picker { display: flex; align-items: center; gap: 3px; }
 .level-picker button {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.2);
   background: rgba(255, 255, 255, 0.06);
@@ -108,7 +108,7 @@ button { font: inherit; color: inherit; }
   cursor: pointer;
 }
 .level-picker button:disabled { opacity: 0.3; cursor: default; }
-.bar .moves { margin: 0 4px; min-width: 3.6em; }
+.bar .moves { margin: 0 2px; min-width: 3em; }
 
 .bar button.act, .win-card button {
   border: 1px solid rgba(255, 255, 255, 0.22);
@@ -287,6 +287,40 @@ button { font: inherit; color: inherit; }
   min-width: 260px;
 }
 .win-title { font-family: var(--font-display); font-size: 26px; color: var(--glow); margin: 0 0 4px; }
+.win-sub { margin: 0; font-size: 14px; color: var(--muted); letter-spacing: 0.2em; }
+
+/* バーのステージ名（タップでステージ選択） */
+.level-picker .stage-name {
+  width: auto;
+  height: 26px;
+  border-radius: 999px;
+  padding: 0 clamp(6px, 2vw, 10px);
+  font-size: 13px;
+  color: var(--muted);
+}
+.level-picker .stage-name b { margin-left: 4px; }
+
+/* ステージ選択 */
+.win-card.picker { width: min(360px, 100%); }
+.tabs { display: flex; gap: 6px; margin: 10px 0; }
+.win-card .tabs button { margin: 0; padding: 6px 0; flex: 1; }
+.tabs button[aria-selected="true"] { background: var(--glow); border-color: var(--glow); color: #2a1a10; }
+.tabs button:disabled { opacity: 0.35; }
+.stage-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 6px; }
+.win-card .stage-grid button {
+  margin: 0;
+  padding: 8px 0 6px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+.stage-grid .num { font-size: 18px; }
+.stage-grid .sub { font-size: 10px; color: var(--muted); min-height: 1.2em; margin-top: 2px; font-weight: 500; }
+.stage-grid button.cleared { border-color: rgba(255, 210, 122, 0.55); }
+.stage-grid button.current { background: rgba(255, 210, 122, 0.18); }
+.stage-grid button:disabled { opacity: 0.4; }
 .win-cats { display: flex; justify-content: center; --cap: 3; width: 180px; margin: 6px auto 14px; }
 .win-cats .cat { animation: hop 0.6s ease-out infinite alternate; }
 .win-cats .cat:nth-child(2) { animation-delay: 0.15s; }
@@ -308,4 +342,12 @@ button { font: inherit; color: inherit; }
 
 @media (prefers-reduced-motion: reduce) {
   .cat, .cat.arrive, .cat.reveal, .win-cats .cat, .shelf.shake, .bar button.nudge { animation: none; transition: none; }
+}
+
+/* 幅の狭いスマホ（iPhone SE など）でも操作行を 1 行に収める */
+@media (max-width: 340px) {
+  .bar { font-size: 12px; }
+  .bar b { font-size: 15px; }
+  .bar button.act { font-size: 12px; }
+  .level-picker .stage-name { font-size: 12px; }
 }

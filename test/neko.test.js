@@ -2,12 +2,14 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   applyMove,
-  createLevel,
+  createStage,
   frontRun,
   hasAnyMove,
   isSolvable,
   isSolved,
-  levelConfig,
+  stageConfig,
+  stageInfo,
+  TOTAL_STAGES,
   movableCount,
 } from "../src/neko/logic.js";
 
@@ -66,10 +68,24 @@ test("解けるかの判定", () => {
   assert.equal(isSolvable([[0, 1], [1, 0]], 2), false);
 });
 
-test("どのレベルも解ける面が作られ、同じレベルは同じ盤面になる", () => {
-  for (let level = 1; level <= 40; level++) {
-    const a = createLevel(level);
-    const cfg = levelConfig(level);
+test("初級・中級・上級が 12 ステージずつで、難しさは後ろほど上がる", () => {
+  assert.equal(TOTAL_STAGES, 36);
+  assert.deepEqual(stageInfo(1), { no: 1, levelIndex: 0, levelName: "初級", stage: 1, label: "初級 ステージ1" });
+  assert.equal(stageInfo(12).label, "初級 ステージ12");
+  assert.equal(stageInfo(13).label, "中級 ステージ1");
+  assert.equal(stageInfo(36).label, "上級 ステージ12");
+  assert.equal(stageConfig(1).hidden, 0);
+  for (let no = 2; no <= TOTAL_STAGES; no++) {
+    assert.ok(stageConfig(no).colors >= stageConfig(no - 1).colors);
+    assert.ok(stageConfig(no).hidden >= stageConfig(no - 1).hidden);
+  }
+  assert.equal(stageConfig(36).colors, 9);
+});
+
+test("どのステージも解ける面が作られ、同じステージは同じ盤面になる", () => {
+  for (let level = 1; level <= TOTAL_STAGES; level++) {
+    const a = createStage(level);
+    const cfg = stageConfig(level);
     assert.equal(a.shelves.length, cfg.colors + cfg.empty);
     // 各色ちょうど cap 匹
     const counts = {};
@@ -80,7 +96,7 @@ test("どのレベルも解ける面が作られ、同じレベルは同じ盤�
     for (const s of a.shelves) if (s.length) assert.equal(s[s.length - 1].hidden, false);
     assert.equal(isSolvable(a.shelves.map((s) => s.map((c) => c.color)), a.cap), true);
     assert.ok(hasAnyMove(a.shelves, a.cap));
-    assert.deepEqual(createLevel(level), a);
+    assert.deepEqual(createStage(level), a);
   }
 });
 

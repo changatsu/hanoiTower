@@ -2,7 +2,12 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Cat, CAT_COLORS } from "./Cat.jsx";
 import {
   applyMove,
-  createLevel,
+  createStage,
+  stageInfo,
+  stageNo,
+  LEVELS,
+  STAGES_PER_LEVEL,
+  TOTAL_STAGES,
   frontRun,
   hasAnyMove,
   isShelfComplete,
@@ -31,16 +36,16 @@ function save(key, v) {
     /* 保存できない環境では何もしない */
   }
 }
-const bestKey = (level) => `neko-best-${level}`;
+const bestKey = (no) => `neko-best-s${no}`; // ステージ（通し番号）ごとの自己ベスト
 
 
-function startState(level) {
-  const { shelves, cap } = createLevel(level);
-  return { level, cap, shelves, history: [], moved: new Set(), revealed: new Set() };
+function startState(no) {
+  const { shelves, cap } = createStage(no);
+  return { no, cap, shelves, history: [], moved: new Set(), revealed: new Set() };
 }
 
 export default function App() {
-  const [unlocked, setUnlocked] = useState(() => load("neko-unlocked") || 1);
+  const [unlocked, setUnlocked] = useState(() => load("neko-stage-unlocked") || Math.min(load("neko-unlocked") || 1, TOTAL_STAGES) /* 以前の「レベル」の進み具合を引き継ぐ */);
   // 説明文の表示（初期値はオフ。選んだ設定は localStorage に残す）
   const [showHelp, setShowHelp] = useState(() => load("neko-help") === 1);
   const toggleHelp = () => {
@@ -63,12 +68,14 @@ export default function App() {
     window.addEventListener("pointerdown", unlockAudio, true);
     return () => window.removeEventListener("pointerdown", unlockAudio, true);
   }, []);
-  const [game, setGame] = useState(() => startState(load("neko-level") || 1));
+  const [game, setGame] = useState(() => startState(Math.min(load("neko-stage") || 1, TOTAL_STAGES)));
   const [selected, setSelected] = useState(null);
   const [shake, setShake] = useState(null);
-  const [best, setBest] = useState(() => load(bestKey(game.level)));
+  const [best, setBest] = useState(() => load(bestKey(game.no)));
 
-  const { level, cap, shelves, history } = game;
+  const { no, cap, shelves, history } = game;
+  const info = stageInfo(no);
+  const [picking, setPicking] = useState(false); // ステージ選択画面
 
   // 盤面を画面に収める：画面の大きさや段数が変わるたびに、ねこの大きさを計算し直す
   const boardRef = useRef(null);
@@ -100,11 +107,11 @@ export default function App() {
   const won = isSolved(shelves, cap);
   const stuck = !won && !hasAnyMove(shelves, cap);
 
-  const goLevel = useCallback((lv) => {
+  const goStage = useCallback((lv) => {
     setGame(startState(lv));
     setSelected(null);
     setBest(load(bestKey(lv)));
-    save("neko-level", lv);
+    save("neko-stage", lv);
   }, []);
 
   // クリアしたら共有用の画像を先に作っておく（共有ボタンを押した瞬間に共有シートを開けるように）
@@ -113,12 +120,12 @@ export default function App() {
     if (!won || !boardRef.current) return;
     let url = null;
     let alive = true;
-    const svg = buildShareSvg({ boardEl: boardRef.current, cap, level, moves });
+    const svg = buildShareSvg({ boardEl: boardRef.current, cap, label: info.label, moves });
     svgToPngBlob(svg)
       .then((blob) => {
         if (!alive) return;
         url = URL.createObjectURL(blob);
-        setShareImg({ file: new File([blob], `nekodana-lv${level}.png`, { type: "image/png" }), url });
+        setShareImg({ file: new File([blob], `nekodana-${no}.png`, { type: "image/png" }), url });
       })
       .catch(() => {});
     return () => {
@@ -131,14 +138,14 @@ export default function App() {
   // クリアしたら自己ベストと次のレベルを記録
   useEffect(() => {
     if (!won) return;
-    const prev = load(bestKey(level));
+    const prev = load(bestKey(no));
     if (prev === null || moves < prev) {
-      save(bestKey(level), moves);
+      save(bestKey(no), moves);
       setBest(moves);
     }
-    if (unlocked < level + 1) {
-      setUnlocked(level + 1);
-      save("neko-unlocked", level + 1);
+    if (unlocked < no + 1 && no < TOTAL_STAGES) {
+      setUnlocked(no + 1);
+      save("neko-stage-unlocked", no + 1);
     }
   }, [won]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -233,13 +240,14 @@ export default function App() {
         {/* 操作行：レベル・手数・1手戻す・やり直しを 1 行に */}
         <div className="bar">
           <div className="level-picker">
-            <button aria-label="前のレベル" disabled={level <= 1} onClick={() => goLevel(level - 1)}>
+            <button aria-label="前のステージ" disabled={no <= 1} onClick={() => goStage(no - 1)}>
               ‹
             </button>
-            <span>
-              Lv<b>{level}</b>
-            </span>
-            <button aria-label="次のレベル" disabled={level >= unlocked} onClick={() => goLevel(level + 1)}>
+            <button className="stage-name" onClick={() => setPicking(true)} aria-label={`${info.label}（ステージを選ぶ）`}>
+              {info.levelName}
+              <b>{info.stage}</b>
+            </button>
+            <button aria-label="次のステージ" disabled={no >= unlocked} onClick={() => goStage(no + 1)}>
               ›
             </button>
           </div>
@@ -249,7 +257,7 @@ export default function App() {
           <button className={`act${stuck ? " nudge" : ""}`} onClick={undo} disabled={moves === 0 || won}>
             1手戻す
           </button>
-          <button className={`act${stuck ? " nudge" : ""}`} onClick={() => goLevel(level)} disabled={moves === 0}>
+          <button className={`act${stuck ? " nudge" : ""}`} onClick={() => goStage(no)} disabled={moves === 0}>
             やり直し
           </button>
         </div>
@@ -313,15 +321,30 @@ export default function App() {
         })}
       </main>
 
-      {won && (
+      {picking && (
+        <StagePicker
+          current={no}
+          unlocked={unlocked}
+          onPick={(n) => {
+            setPicking(false);
+            goStage(n);
+          }}
+          onClose={() => setPicking(false)}
+        />
+      )}
+
+      {won && !picking && (
         <div className="win" role="dialog" aria-label="クリア">
           <div className="win-card">
-            <p className="win-title">レベル {level} クリア！</p>
+            <p className="win-sub">{info.levelName}</p>
+            <p className="win-title">
+              {no === TOTAL_STAGES ? "全ステージクリア！" : `ステージ ${info.stage} クリア！`}
+            </p>
             <p>
               {moves} 手{best === moves ? "（自己ベスト）" : ""}
             </p>
             {shareImg ? (
-              <img className="share-preview" src={shareImg.url} alt={`レベル${level}の完成した棚`} />
+              <img className="share-preview" src={shareImg.url} alt={`${info.label}の完成した棚`} />
             ) : (
               <div className="win-cats" aria-hidden="true">
                 {[0, 2, 7].map((c) => (
@@ -331,16 +354,58 @@ export default function App() {
                 ))}
               </div>
             )}
-            <button className="line" onClick={() => shareResult({ file: shareImg?.file, level, moves })}>
+            <button className="line" onClick={() => shareResult({ file: shareImg?.file, label: info.label, moves })}>
               LINEで送る
             </button>
-            <button className="primary" onClick={() => goLevel(level + 1)}>
-              次のレベルへ
-            </button>
-            <button onClick={() => goLevel(level)}>もう一度</button>
+            {no < TOTAL_STAGES && (
+              <button className="primary" onClick={() => goStage(no + 1)}>
+                {info.stage === STAGES_PER_LEVEL ? `${LEVELS[info.levelIndex + 1].name}へ進む` : "次のステージへ"}
+              </button>
+            )}
+            <button onClick={() => setPicking(true)}>ステージを選ぶ</button>
+            <button onClick={() => goStage(no)}>もう一度</button>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ステージ選択：レベル（初級・中級・上級）のタブと、12 ステージのボタン
+function StagePicker({ current, unlocked, onPick, onClose }) {
+  const [tab, setTab] = useState(stageInfo(current).levelIndex);
+  return (
+    <div className="win" role="dialog" aria-label="ステージを選ぶ" onClick={onClose}>
+      <div className="win-card picker" onClick={(e) => e.stopPropagation()}>
+        <p className="win-title">ステージを選ぶ</p>
+        <div className="tabs" role="tablist">
+          {LEVELS.map((lv, i) => (
+            <button key={lv.name} role="tab" aria-selected={tab === i} disabled={stageNo(i, 1) > unlocked} onClick={() => setTab(i)}>
+              {lv.name}
+            </button>
+          ))}
+        </div>
+        <div className="stage-grid">
+          {Array.from({ length: STAGES_PER_LEVEL }, (_, k) => {
+            const n = stageNo(tab, k + 1);
+            const best = load(bestKey(n));
+            const locked = n > unlocked;
+            return (
+              <button
+                key={n}
+                className={[n === current && "current", best !== null && "cleared"].filter(Boolean).join(" ")}
+                disabled={locked}
+                onClick={() => onPick(n)}
+                aria-label={`${stageInfo(n).label}${locked ? "（まだ遊べません）" : best !== null ? `（ベスト ${best} 手）` : ""}`}
+              >
+                <span className="num">{k + 1}</span>
+                <span className="sub">{locked ? "🔒" : best !== null ? `${best}手` : ""}</span>
+              </button>
+            );
+          })}
+        </div>
+        <button onClick={onClose}>とじる</button>
+      </div>
     </div>
   );
 }
