@@ -5,24 +5,93 @@
 
 export const COLOR_COUNT = 9;
 
-// レベルごとの難しさ。colors: 色の数、cap: 棚に並べる数、empty: 空き棚の数、hidden: ？になる割合
-// cap はスマホでもねこが小さくなりすぎないよう、どのレベルでも 4 にそろえる（難しさは色の数と？で上げる）
-export function levelConfig(level) {
-  const table = [
-    { colors: 3, cap: 4, empty: 2, hidden: 0 },
-    { colors: 4, cap: 4, empty: 2, hidden: 0 },
-    { colors: 4, cap: 4, empty: 2, hidden: 0.3 },
-    { colors: 5, cap: 4, empty: 2, hidden: 0.35 },
-    { colors: 6, cap: 4, empty: 2, hidden: 0.4 },
-    { colors: 7, cap: 4, empty: 2, hidden: 0.45 },
-    { colors: 7, cap: 4, empty: 2, hidden: 0.5 },
-    { colors: 8, cap: 4, empty: 2, hidden: 0.5 },
-  ];
-  if (level <= table.length) return table[Math.max(1, level) - 1];
-  return { colors: COLOR_COUNT, cap: 4, empty: 2, hidden: 0.55 };
+// ステージ構成：レベル（初級・中級・上級・超上級）ごとに 12 ステージ。
+// 内部では通し番号 no で扱う。初級 1 = 1、中級 1 = 13、上級 1 = 25、超上級 1 = 37。
+// 上級 12 をクリアすると、超上級と「エンドレス」（上級 13, 14, … と続く）が開放される。
+// エンドレスの通し番号は ENDLESS_BASE + ステージ（上級 13 = 1013）。
+export const LEVELS = [
+  // colors: 色の数（1 ステージ目 → 12 ステージ目）、hidden: ？になる割合（同）
+  { name: "初級", colors: [3, 5], hidden: [0, 0.25] },
+  { name: "中級", colors: [5, 7], hidden: [0.3, 0.45] },
+  { name: "上級", colors: [7, 9], hidden: [0.45, 0.6] },
+  // 超上級：空き棚を 1 つに減らすと解けない配置ばかりになるので、空き棚は 2 のまま
+  // ？を増やして、12 ステージ目では先頭以外ぜんぶ？にする
+  { name: "超上級", colors: [9, 9], hidden: [0.7, 1] },
+];
+export const STAGES_PER_LEVEL = 12;
+export const TOTAL_STAGES = LEVELS.length * STAGES_PER_LEVEL;
+export const ENDLESS_LEVEL = 2; // 上級の続き
+export const ENDLESS_FIRST = STAGES_PER_LEVEL + 1; // 上級 13 から
+export const ENDLESS_BASE = 1000;
+const LAST_REGULAR = (ENDLESS_LEVEL + 1) * STAGES_PER_LEVEL; // 上級 12（= 36）
+
+export const isEndless = (no) => no > ENDLESS_BASE;
+export const endlessNo = (stage) => ENDLESS_BASE + stage;
+
+// 通し番号 → { levelIndex, levelName, stage（レベル内の番号）, endless, label }
+export function stageInfo(no) {
+  if (isEndless(no)) {
+    const stage = Math.max(ENDLESS_FIRST, no - ENDLESS_BASE);
+    const levelName = LEVELS[ENDLESS_LEVEL].name;
+    return { no: endlessNo(stage), levelIndex: ENDLESS_LEVEL, levelName, stage, endless: true, label: `${levelName} ステージ${stage}` };
+  }
+  const n = Math.min(Math.max(1, no), TOTAL_STAGES);
+  const levelIndex = Math.floor((n - 1) / STAGES_PER_LEVEL);
+  const stage = n - levelIndex * STAGES_PER_LEVEL;
+  const levelName = LEVELS[levelIndex].name;
+  return { no: n, levelIndex, levelName, stage, endless: false, label: `${levelName} ステージ${stage}` };
 }
 
-// 再現できる乱数（同じレベルは毎回同じ盤面になる）
+export const stageNo = (levelIndex, stage) => levelIndex * STAGES_PER_LEVEL + stage;
+
+// 正しい通し番号に直す（保存された値が壊れていても遊べるように）
+export const normalizeNo = (no) => stageInfo(Number.isFinite(no) ? no : 1).no;
+
+// ‹ › で移る先。上級 12 の次はエンドレス（上級 13）、上級 13 の前は上級 12。
+// 超上級へは上級 12 のクリア画面かステージ選択から入る（超上級 1 の前は上級 12）。
+export function prevStage(no) {
+  if (isEndless(no)) return no - ENDLESS_BASE <= ENDLESS_FIRST ? LAST_REGULAR : no - 1;
+  if (no === LAST_REGULAR + 1) return LAST_REGULAR;
+  return no > 1 ? no - 1 : null;
+}
+export function nextStage(no) {
+  if (isEndless(no)) return no + 1;
+  if (no === LAST_REGULAR) return endlessNo(ENDLESS_FIRST);
+  return no < TOTAL_STAGES ? no + 1 : null;
+}
+
+// 進み具合 progress = { unlocked: 遊べる最後の通し番号（1〜48）, endless: 遊べる最後のエンドレスのステージ（13〜） }
+export const endlessOpen = (progress) => progress.unlocked > LAST_REGULAR;
+export function isUnlocked(no, progress) {
+  if (isEndless(no)) return endlessOpen(progress) && no - ENDLESS_BASE <= progress.endless;
+  return no <= progress.unlocked;
+}
+// no をクリアしたあとの進み具合
+export function afterClear(no, progress) {
+  if (isEndless(no)) return { ...progress, endless: Math.max(progress.endless, no - ENDLESS_BASE + 1) };
+  return { ...progress, unlocked: Math.max(progress.unlocked, Math.min(no + 1, TOTAL_STAGES)) };
+}
+// 隠し要素：全ステージを開放する（超上級 12 まで遊べて、エンドレスも開く。すでに先へ進んでいれば変えない）
+export const unlockAll = (progress) => ({ ...progress, unlocked: TOTAL_STAGES });
+
+// エンドレスで何ステージ続けてクリアしたか
+export const endlessCleared = (progress) => Math.max(0, progress.endless - ENDLESS_FIRST);
+
+// ステージごとの難しさ。colors: 色の数、cap: 棚に並べる数、empty: 空き棚の数、hidden: ？になる割合
+// cap はスマホでもねこが小さくなりすぎないよう、どのステージでも 4 にそろえる（難しさは色の数と？で上げる）
+// エンドレスは上級 12 と同じ難しさで、盤面だけが毎回変わる
+export function stageConfig(no) {
+  if (isEndless(no)) return stageConfig(LAST_REGULAR);
+  const { levelIndex, stage } = stageInfo(no);
+  const lv = LEVELS[levelIndex];
+  const t = (stage - 1) / (STAGES_PER_LEVEL - 1);
+  const colors = Math.round(lv.colors[0] + (lv.colors[1] - lv.colors[0]) * t);
+  // 初級の最初の 3 ステージは？なしで、ルールに慣れてもらう
+  const hidden = levelIndex === 0 && stage <= 3 ? 0 : lv.hidden[0] + (lv.hidden[1] - lv.hidden[0]) * t;
+  return { colors, cap: 4, empty: 2, hidden: Math.round(hidden * 100) / 100 };
+}
+
+// 再現できる乱数（同じステージは毎回同じ盤面になる）
 export function mulberry32(seed) {
   let a = seed >>> 0;
   return () => {
@@ -146,11 +215,11 @@ export function isSolvable(colorShelves, cap, limit = 200000) {
   return dfs(colorShelves) === true;
 }
 
-// レベルの盤面を作る。戻り値 { shelves, cap, colors }
-export function createLevel(level) {
-  const cfg = levelConfig(level);
+// ステージ（通し番号 no）の盤面を作る。戻り値 { shelves, cap, colors }
+export function createStage(no) {
+  const cfg = stageConfig(no);
   for (let attempt = 0; attempt < 200; attempt++) {
-    const rand = mulberry32(level * 7919 + attempt * 104729 + 17);
+    const rand = mulberry32(no * 7919 + attempt * 104729 + 17);
     // 使う色を選ぶ
     const palette = [...Array(COLOR_COUNT).keys()];
     shuffle(palette, rand);

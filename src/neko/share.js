@@ -13,12 +13,12 @@ const ROW_GAP = 34;
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
-export function shareText(level, moves) {
-  return `ねこだな レベル${level}をクリア！（${moves}手）\n${GAME_URL}`;
+export function shareText(label, moves) {
+  return `ねこだな ${label}をクリア！（${moves}手）\n${GAME_URL}`;
 }
 
 // boardEl: 盤面（.shelves）の DOM。棚ごとの .cat-svg を取り出して並べ直す
-export function buildShareSvg({ boardEl, cap, level, moves }) {
+export function buildShareSvg({ boardEl, cap, label, moves }) {
   const shelfEls = [...boardEl.querySelectorAll(".shelf")];
   const colW = (W - MARGIN * 2 - AISLE) / 2;
   const slot = colW / cap;
@@ -57,7 +57,7 @@ export function buildShareSvg({ boardEl, cap, level, moves }) {
 </defs>
 <rect width="${W}" height="${H}" fill="url(#bg)"/>
 <text x="${W / 2}" y="105" text-anchor="middle" font-size="76" font-weight="900" fill="#ffd27a" font-family="Hiragino Sans, Hiragino Kaku Gothic ProN, Yu Gothic, sans-serif">ねこだな</text>
-<text x="${W / 2}" y="180" text-anchor="middle" font-size="46" font-weight="700" fill="#f3eee4" font-family="Hiragino Sans, Hiragino Kaku Gothic ProN, Yu Gothic, sans-serif">${esc(`レベル ${level} クリア！ ${moves} 手`)}</text>
+<text x="${W / 2}" y="180" text-anchor="middle" font-size="46" font-weight="700" fill="#f3eee4" font-family="Hiragino Sans, Hiragino Kaku Gothic ProN, Yu Gothic, sans-serif">${esc(`${label} クリア！ ${moves} 手`)}</text>
 ${dots.join("")}
 ${parts.join("\n")}
 <text x="${W / 2}" y="${H - 44}" text-anchor="middle" font-size="30" fill="#b9b0cf" font-family="Hiragino Sans, Yu Gothic, sans-serif">${esc(GAME_URL.replace("https://", ""))}</text>
@@ -87,8 +87,8 @@ export function svgToPngBlob(svgText) {
 
 // 画像つきで共有する。共有シート（LINE を選べる）が使えなければ、LINE の文字だけの共有を開く。
 // 戻り値: "shared" | "cancelled" | "line-text"
-export async function shareResult({ file, level, moves }) {
-  const text = shareText(level, moves);
+export async function shareResult({ file, label, moves }) {
+  const text = shareText(label, moves);
   if (file && navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file], text });

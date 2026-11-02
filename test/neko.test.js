@@ -2,12 +2,22 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   applyMove,
-  createLevel,
+  createStage,
   frontRun,
   hasAnyMove,
   isSolvable,
   isSolved,
-  levelConfig,
+  stageConfig,
+  stageInfo,
+  TOTAL_STAGES,
+  prevStage,
+  nextStage,
+  isUnlocked,
+  afterClear,
+  endlessOpen,
+  endlessCleared,
+  normalizeNo,
+  unlockAll,
   movableCount,
 } from "../src/neko/logic.js";
 
@@ -66,10 +76,73 @@ test("解けるかの判定", () => {
   assert.equal(isSolvable([[0, 1], [1, 0]], 2), false);
 });
 
-test("どのレベルも解ける面が作られ、同じレベルは同じ盤面になる", () => {
-  for (let level = 1; level <= 40; level++) {
-    const a = createLevel(level);
-    const cfg = levelConfig(level);
+test("初級・中級・上級・超上級が 12 ステージずつで、難しさは後ろほど上がる", () => {
+  assert.equal(TOTAL_STAGES, 48);
+  assert.deepEqual(stageInfo(1), { no: 1, levelIndex: 0, levelName: "初級", stage: 1, endless: false, label: "初級 ステージ1" });
+  assert.equal(stageInfo(12).label, "初級 ステージ12");
+  assert.equal(stageInfo(13).label, "中級 ステージ1");
+  assert.equal(stageInfo(36).label, "上級 ステージ12");
+  assert.equal(stageConfig(1).hidden, 0);
+  for (let no = 2; no <= TOTAL_STAGES; no++) {
+    assert.ok(stageConfig(no).colors >= stageConfig(no - 1).colors);
+    assert.ok(stageConfig(no).hidden >= stageConfig(no - 1).hidden);
+  }
+  assert.equal(stageConfig(36).colors, 9);
+  assert.equal(stageInfo(37).label, "超上級 ステージ1");
+  assert.equal(stageInfo(48).label, "超上級 ステージ12");
+  assert.equal(stageConfig(48).hidden, 1); // 超上級 12 は先頭以外ぜんぶ？
+  assert.equal(stageConfig(48).empty, 2);
+});
+
+test("エンドレスは上級 13 から数え、難しさは上級 12 と同じで盤面は毎回変わる", () => {
+  assert.equal(stageInfo(1013).label, "上級 ステージ13");
+  assert.equal(stageInfo(1013).endless, true);
+  assert.equal(stageInfo(1100).stage, 100);
+  assert.deepEqual(stageConfig(1013), stageConfig(36));
+  assert.deepEqual(stageConfig(1200), stageConfig(36));
+  assert.notDeepEqual(colorsOf(createStage(1013).shelves), colorsOf(createStage(1014).shelves));
+  assert.equal(normalizeNo(1005), 1013);
+  assert.equal(normalizeNo(99), 48);
+  assert.equal(normalizeNo(NaN), 1);
+});
+
+test("‹ › の移動：上級 12 の次はエンドレス、超上級 1 の前は上級 12", () => {
+  assert.equal(prevStage(1), null);
+  assert.equal(nextStage(12), 13);
+  assert.equal(nextStage(36), 1013);
+  assert.equal(prevStage(1013), 36);
+  assert.equal(nextStage(1013), 1014);
+  assert.equal(prevStage(1014), 1013);
+  assert.equal(prevStage(37), 36);
+  assert.equal(nextStage(37), 38);
+  assert.equal(nextStage(48), null);
+});
+
+test("上級 12 をクリアするとエンドレスと超上級が開き、エンドレスは何回クリアしたかを数える", () => {
+  let p = { unlocked: 36, endless: 13 };
+  assert.equal(endlessOpen(p), false);
+  assert.equal(isUnlocked(37, p), false);
+  assert.equal(isUnlocked(1013, p), false);
+  p = afterClear(36, p);
+  assert.equal(endlessOpen(p), true);
+  assert.equal(isUnlocked(37, p), true);
+  assert.equal(isUnlocked(38, p), false);
+  assert.equal(isUnlocked(1013, p), true);
+  assert.equal(isUnlocked(1014, p), false);
+  assert.equal(endlessCleared(p), 0);
+  p = afterClear(1013, p);
+  p = afterClear(1014, p);
+  assert.equal(isUnlocked(1015, p), true);
+  assert.equal(endlessCleared(p), 2);
+  p = afterClear(1013, p); // 前のステージをやり直しても減らない
+  assert.equal(endlessCleared(p), 2);
+  assert.equal(afterClear(48, p).unlocked, 48);
+});
+
+test("どのステージも解ける面が作られ、同じステージは同じ盤面になる", () => {
+  for (const level of [...Array(TOTAL_STAGES).keys()].map((i) => i + 1).concat([1013, 1014, 1050, 1200])) {
+    const a = createStage(level);
+    const cfg = stageConfig(level);
     assert.equal(a.shelves.length, cfg.colors + cfg.empty);
     // 各色ちょうど cap 匹
     const counts = {};
@@ -80,7 +153,7 @@ test("どのレベルも解ける面が作られ、同じレベルは同じ盤�
     for (const s of a.shelves) if (s.length) assert.equal(s[s.length - 1].hidden, false);
     assert.equal(isSolvable(a.shelves.map((s) => s.map((c) => c.color)), a.cap), true);
     assert.ok(hasAnyMove(a.shelves, a.cap));
-    assert.deepEqual(createLevel(level), a);
+    assert.deepEqual(createStage(level), a);
   }
 });
 
@@ -96,4 +169,13 @@ test("盤面は画面の幅と高さの両方に収まる大きさになる", as
     const w = fitCatWidth({ width: 390, height: 640, aisle: 31, rows, cap: 4 });
     assert.ok(rows * (w * (98 / 84) + 20) + (rows - 1) * 6 + 14 <= 640);
   }
+});
+
+test("隠し要素：超上級 12 まで全ステージとエンドレスが開く", () => {
+  const p = unlockAll({ unlocked: 3, endless: 13 });
+  assert.equal(endlessOpen(p), true);
+  for (let no = 1; no <= TOTAL_STAGES; no++) assert.equal(isUnlocked(no, p), true);
+  assert.equal(isUnlocked(1013, p), true);
+  assert.equal(isUnlocked(1014, p), false); // エンドレスは順番に進む
+  assert.deepEqual(unlockAll({ unlocked: 48, endless: 20 }), { unlocked: 48, endless: 20 });
 });

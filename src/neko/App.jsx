@@ -2,7 +2,23 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Cat, CAT_COLORS } from "./Cat.jsx";
 import {
   applyMove,
-  createLevel,
+  createStage,
+  stageInfo,
+  stageNo,
+  normalizeNo,
+  prevStage,
+  nextStage,
+  isUnlocked,
+  afterClear,
+  endlessOpen,
+  endlessCleared,
+  unlockAll,
+  endlessNo,
+  ENDLESS_FIRST,
+  ENDLESS_LEVEL,
+  LEVELS,
+  STAGES_PER_LEVEL,
+  TOTAL_STAGES,
   frontRun,
   hasAnyMove,
   isShelfComplete,
@@ -11,6 +27,7 @@ import {
 } from "./logic.js";
 import { SHELF_PAD_X, fitCatWidth } from "./layout.js";
 import { buildShareSvg, shareResult, svgToPngBlob } from "./share.js";
+import { setSoundEnabled, sfx, unlockAudio } from "./sound.js";
 
 const HINT = "真ん中の通路側が先頭です。棚をタップして先頭のねこを持ち上げ、同じ色のねこが先頭にいる棚か、空いている棚をタップします。";
 
@@ -30,16 +47,21 @@ function save(key, v) {
     /* 保存できない環境では何もしない */
   }
 }
-const bestKey = (level) => `neko-best-${level}`;
+const LAST_REGULAR = stageNo(ENDLESS_LEVEL, STAGES_PER_LEVEL); // 上級 12：クリアするとエンドレスと超上級が開く
+const bestKey = (no) => `neko-best-s${no}`; // ステージ（通し番号）ごとの自己ベスト
 
 
-function startState(level) {
-  const { shelves, cap } = createLevel(level);
-  return { level, cap, shelves, history: [], moved: new Set(), revealed: new Set() };
+function startState(no) {
+  const { shelves, cap } = createStage(no);
+  return { no, cap, shelves, history: [], moved: new Set(), revealed: new Set() };
 }
 
 export default function App() {
-  const [unlocked, setUnlocked] = useState(() => load("neko-unlocked") || 1);
+  // 進み具合：通常ステージは遊べる最後の通し番号、エンドレスは遊べる最後のステージ（上級 13〜）
+  const [progress, setProgress] = useState(() => ({
+    unlocked: Math.min(load("neko-stage-unlocked") || load("neko-unlocked") || 1, TOTAL_STAGES), // 以前の「レベル」の進み具合を引き継ぐ
+    endless: Math.max(load("neko-endless") || ENDLESS_FIRST, ENDLESS_FIRST),
+  }));
   // 説明文の表示（初期値はオフ。選んだ設定は localStorage に残す）
   const [showHelp, setShowHelp] = useState(() => load("neko-help") === 1);
   const toggleHelp = () => {
@@ -48,12 +70,50 @@ export default function App() {
       return !v;
     });
   };
-  const [game, setGame] = useState(() => startState(load("neko-level") || 1));
+  // 効果音（初期値はオン。選んだ設定は localStorage に残す）
+  const [soundOn, setSoundOn] = useState(() => load("neko-sound") !== 0);
+  useEffect(() => setSoundEnabled(soundOn), [soundOn]);
+  const toggleSound = () => {
+    setSoundOn((v) => {
+      save("neko-sound", v ? 0 : 1);
+      return !v;
+    });
+  };
+  // iPhone では、画面に触れたときに音を鳴らせる状態にする
+  useEffect(() => {
+    window.addEventListener("pointerdown", unlockAudio, true);
+    return () => window.removeEventListener("pointerdown", unlockAudio, true);
+  }, []);
+  const [game, setGame] = useState(() => startState(normalizeNo(load("neko-stage") || 1)));
   const [selected, setSelected] = useState(null);
   const [shake, setShake] = useState(null);
-  const [best, setBest] = useState(() => load(bestKey(game.level)));
+  const [best, setBest] = useState(() => load(bestKey(game.no)));
 
-  const { level, cap, shelves, history } = game;
+  const { no, cap, shelves, history } = game;
+  const info = stageInfo(no);
+  const prev = prevStage(no);
+  const next = nextStage(no);
+  const [picking, setPicking] = useState(false); // ステージ選択画面
+  const [openedNow, setOpenedNow] = useState(false); // いまエンドレスと超上級が開いた
+
+  // 隠し要素：タイトル「ねこだな」を素早く 7 回タップすると、超上級 12 まで全ステージが開く
+  const [toast, setToast] = useState(null);
+  const secretTaps = useRef({ n: 0, t: 0 });
+  const tapTitle = () => {
+    const now = Date.now();
+    const s = secretTaps.current;
+    s.n = now - s.t < 600 ? s.n + 1 : 1;
+    s.t = now;
+    if (s.n < 7) return;
+    s.n = 0;
+    const next = unlockAll(progress);
+    save("neko-stage-unlocked", next.unlocked);
+    save("neko-endless", next.endless);
+    setProgress(next);
+    sfx.win();
+    setToast("ひみつ発見！超上級12まで全ステージとエンドレスを開放しました");
+    setTimeout(() => setToast(null), 3500);
+  };
 
   // 盤面を画面に収める：画面の大きさや段数が変わるたびに、ねこの大きさを計算し直す
   const boardRef = useRef(null);
@@ -85,11 +145,12 @@ export default function App() {
   const won = isSolved(shelves, cap);
   const stuck = !won && !hasAnyMove(shelves, cap);
 
-  const goLevel = useCallback((lv) => {
+  const goStage = useCallback((lv) => {
     setGame(startState(lv));
     setSelected(null);
+    setOpenedNow(false);
     setBest(load(bestKey(lv)));
-    save("neko-level", lv);
+    save("neko-stage", lv);
   }, []);
 
   // クリアしたら共有用の画像を先に作っておく（共有ボタンを押した瞬間に共有シートを開けるように）
@@ -98,12 +159,12 @@ export default function App() {
     if (!won || !boardRef.current) return;
     let url = null;
     let alive = true;
-    const svg = buildShareSvg({ boardEl: boardRef.current, cap, level, moves });
+    const svg = buildShareSvg({ boardEl: boardRef.current, cap, label: info.label, moves });
     svgToPngBlob(svg)
       .then((blob) => {
         if (!alive) return;
         url = URL.createObjectURL(blob);
-        setShareImg({ file: new File([blob], `nekodana-lv${level}.png`, { type: "image/png" }), url });
+        setShareImg({ file: new File([blob], `nekodana-${no}.png`, { type: "image/png" }), url });
       })
       .catch(() => {});
     return () => {
@@ -113,18 +174,19 @@ export default function App() {
     };
   }, [won]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // クリアしたら自己ベストと次のレベルを記録
+  // クリアしたら自己ベストと次のステージを記録
   useEffect(() => {
     if (!won) return;
-    const prev = load(bestKey(level));
+    const prev = load(bestKey(no));
     if (prev === null || moves < prev) {
-      save(bestKey(level), moves);
+      save(bestKey(no), moves);
       setBest(moves);
     }
-    if (unlocked < level + 1) {
-      setUnlocked(level + 1);
-      save("neko-unlocked", level + 1);
-    }
+    const next = afterClear(no, progress);
+    if (!endlessOpen(progress) && endlessOpen(next)) setOpenedNow(true);
+    if (next.unlocked !== progress.unlocked) save("neko-stage-unlocked", next.unlocked);
+    if (next.endless !== progress.endless) save("neko-endless", next.endless);
+    setProgress(next);
   }, [won]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tapShelf = (i) => {
@@ -132,6 +194,7 @@ export default function App() {
     if (selected === null) {
       if (shelves[i].length === 0 || isShelfComplete(shelves[i], cap)) return;
       setSelected(i);
+      sfx.pick();
       return;
     }
     if (selected === i) {
@@ -150,9 +213,15 @@ export default function App() {
       });
       setGame({ ...game, shelves: next, history: [...history, shelves], moved, revealed });
       setSelected(null);
+      sfx.drop(shelves[selected][shelves[selected].length - 1].color);
+      if (revealed.size > 0) sfx.reveal();
+      if (isSolved(next, cap)) sfx.win();
+      else if (isShelfComplete(next[i], cap)) sfx.complete();
     } else if (shelves[i].length > 0 && !isShelfComplete(shelves[i], cap)) {
       setSelected(i); // 置けない棚をタップしたら、そちらを選び直す
+      sfx.pick();
     } else {
+      sfx.nope();
       setShake(i);
       setTimeout(() => setShake(null), 400);
     }
@@ -160,6 +229,7 @@ export default function App() {
 
   const undo = () => {
     if (history.length === 0) return;
+    sfx.undo();
     setGame({
       ...game,
       shelves: history[history.length - 1],
@@ -194,25 +264,30 @@ export default function App() {
       <header className="neko-header">
         {/* タイトル行：右にベストと説明の切り替えを小さく置く */}
         <div className="title-row">
-          <h1>ねこだな</h1>
+          <h1 onClick={tapTitle}>ねこだな</h1>
           <span className="best">
             ベスト <b>{best ?? "–"}</b>
           </span>
-          <button className="help-toggle" onClick={toggleHelp} aria-pressed={showHelp}>
-            説明 {showHelp ? "オン" : "オフ"}
+          {/* オン／オフは枠の光り方で示す（狭い画面でも 1 行に収めるため文字は短く） */}
+          <button className="help-toggle" onClick={toggleHelp} aria-pressed={showHelp} aria-label={`説明 ${showHelp ? "オン" : "オフ"}`}>
+            説明
           </button>
-          <a href="../">ハノイの塔 ›</a>
+          <button className="help-toggle" onClick={toggleSound} aria-pressed={soundOn} aria-label={`音 ${soundOn ? "オン" : "オフ"}`}>
+            {soundOn ? "♪ 音" : "音 ✕"}
+          </button>
+          <a href="../">ハノイ ›</a>
         </div>
         {/* 操作行：レベル・手数・1手戻す・やり直しを 1 行に */}
         <div className="bar">
           <div className="level-picker">
-            <button aria-label="前のレベル" disabled={level <= 1} onClick={() => goLevel(level - 1)}>
+            <button aria-label="前のステージ" disabled={prev === null} onClick={() => goStage(prev)}>
               ‹
             </button>
-            <span>
-              Lv<b>{level}</b>
-            </span>
-            <button aria-label="次のレベル" disabled={level >= unlocked} onClick={() => goLevel(level + 1)}>
+            <button className={`stage-name${info.endless ? " endless" : ""}`} onClick={() => setPicking(true)} aria-label={`${info.label}（ステージを選ぶ）`}>
+              {info.levelName}
+              <b>{info.stage}</b>
+            </button>
+            <button aria-label="次のステージ" disabled={next === null || !isUnlocked(next, progress)} onClick={() => goStage(next)}>
               ›
             </button>
           </div>
@@ -222,7 +297,7 @@ export default function App() {
           <button className={`act${stuck ? " nudge" : ""}`} onClick={undo} disabled={moves === 0 || won}>
             1手戻す
           </button>
-          <button className={`act${stuck ? " nudge" : ""}`} onClick={() => goLevel(level)} disabled={moves === 0}>
+          <button className={`act${stuck ? " nudge" : ""}`} onClick={() => goStage(no)} disabled={moves === 0}>
             やり直し
           </button>
         </div>
@@ -286,15 +361,38 @@ export default function App() {
         })}
       </main>
 
-      {won && (
+      {toast && (
+        <div className="toast" role="status">
+          {toast}
+        </div>
+      )}
+
+      {picking && (
+        <StagePicker
+          current={no}
+          progress={progress}
+          onPick={(n) => {
+            setPicking(false);
+            goStage(n);
+          }}
+          onClose={() => setPicking(false)}
+        />
+      )}
+
+      {won && !picking && (
         <div className="win" role="dialog" aria-label="クリア">
           <div className="win-card">
-            <p className="win-title">レベル {level} クリア！</p>
+            <p className="win-sub">{info.endless ? `${info.levelName}・エンドレス` : info.levelName}</p>
+            <p className="win-title">
+              {no === TOTAL_STAGES ? "全ステージクリア！" : `ステージ ${info.stage} クリア！`}
+            </p>
             <p>
               {moves} 手{best === moves ? "（自己ベスト）" : ""}
+              {info.endless && <><br />エンドレス {info.stage - STAGES_PER_LEVEL} 回目クリア</>}
             </p>
+            {openedNow && <p className="win-news">エンドレスと超上級が遊べるようになりました！</p>}
             {shareImg ? (
-              <img className="share-preview" src={shareImg.url} alt={`レベル${level}の完成した棚`} />
+              <img className="share-preview" src={shareImg.url} alt={`${info.label}の完成した棚`} />
             ) : (
               <div className="win-cats" aria-hidden="true">
                 {[0, 2, 7].map((c) => (
@@ -304,16 +402,89 @@ export default function App() {
                 ))}
               </div>
             )}
-            <button className="line" onClick={() => shareResult({ file: shareImg?.file, level, moves })}>
+            <button className="line" onClick={() => shareResult({ file: shareImg?.file, label: info.label, moves })}>
               LINEで送る
             </button>
-            <button className="primary" onClick={() => goLevel(level + 1)}>
-              次のレベルへ
-            </button>
-            <button onClick={() => goLevel(level)}>もう一度</button>
+            {next !== null && (
+              <button className="primary" onClick={() => goStage(next)}>
+                {info.endless
+                  ? `次へ（${info.levelName}${info.stage + 1}）`
+                  : no === LAST_REGULAR
+                  ? `エンドレスへ（${info.levelName}${ENDLESS_FIRST}）`
+                  : info.stage === STAGES_PER_LEVEL
+                    ? `${LEVELS[info.levelIndex + 1].name}へ進む`
+                    : "次のステージへ"}
+              </button>
+            )}
+            {no === LAST_REGULAR && (
+              <button className="primary alt" onClick={() => goStage(stageNo(ENDLESS_LEVEL + 1, 1))}>
+                {LEVELS[ENDLESS_LEVEL + 1].name}へ進む
+              </button>
+            )}
+            <button onClick={() => setPicking(true)}>ステージを選ぶ</button>
+            <button onClick={() => goStage(no)}>もう一度</button>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ステージ選択：レベルのタブと 12 ステージのボタン。上級のタブには、上級 12 のクリア後にエンドレスの入り口が出る
+function StagePicker({ current, progress, onPick, onClose }) {
+  const [tab, setTab] = useState(stageInfo(current).levelIndex);
+  const open = endlessOpen(progress);
+  const cleared = endlessCleared(progress);
+  return (
+    <div className="win" role="dialog" aria-label="ステージを選ぶ" onClick={onClose}>
+      <div className="win-card picker" onClick={(e) => e.stopPropagation()}>
+        <p className="win-title">ステージを選ぶ</p>
+        <div className="tabs" role="tablist">
+          {LEVELS.map((lv, i) => (
+            <button key={lv.name} role="tab" aria-selected={tab === i} disabled={!isUnlocked(stageNo(i, 1), progress)} onClick={() => setTab(i)}>
+              {lv.name}
+            </button>
+          ))}
+        </div>
+        <div className="stage-grid">
+          {Array.from({ length: STAGES_PER_LEVEL }, (_, k) => {
+            const n = stageNo(tab, k + 1);
+            const best = load(bestKey(n));
+            const locked = !isUnlocked(n, progress);
+            return (
+              <button
+                key={n}
+                className={[n === current && "current", best !== null && "cleared"].filter(Boolean).join(" ")}
+                disabled={locked}
+                onClick={() => onPick(n)}
+                aria-label={`${stageInfo(n).label}${locked ? "（まだ遊べません）" : best !== null ? `（ベスト ${best} 手）` : ""}`}
+              >
+                <span className="num">{k + 1}</span>
+                <span className="sub">{locked ? "🔒" : best !== null ? `${best}手` : ""}</span>
+              </button>
+            );
+          })}
+        </div>
+        {tab === ENDLESS_LEVEL && (
+          <button
+            className={`endless-entry${stageInfo(current).endless ? " current" : ""}`}
+            disabled={!open}
+            onClick={() => onPick(endlessNo(progress.endless))}
+          >
+            {open ? (
+              <>
+                <span>
+                  ∞ エンドレス　<b>ステージ{progress.endless}</b>から
+                </span>
+                <span className="sub">{cleared > 0 ? `${cleared} 回クリア` : "上級12 の続き"}</span>
+              </>
+            ) : (
+              <span>🔒 エンドレス（上級12 をクリアで開放）</span>
+            )}
+          </button>
+        )}
+        <button onClick={onClose}>とじる</button>
+      </div>
     </div>
   );
 }
