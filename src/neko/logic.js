@@ -71,8 +71,8 @@ export function afterClear(no, progress) {
   if (isEndless(no)) return { ...progress, endless: Math.max(progress.endless, no - ENDLESS_BASE + 1) };
   return { ...progress, unlocked: Math.max(progress.unlocked, Math.min(no + 1, TOTAL_STAGES)) };
 }
-// 隠し要素：上級 12 までクリアしたことにする（エンドレスと超上級が開く。すでに先へ進んでいれば変えない）
-export const skipToEndless = (progress) => afterClear(LAST_REGULAR, progress);
+// 隠し要素：全ステージを開放する（超上級 12 まで遊べて、エンドレスも開く。すでに先へ進んでいれば変えない）
+export const unlockAll = (progress) => ({ ...progress, unlocked: TOTAL_STAGES });
 
 // エンドレスで何ステージ続けてクリアしたか
 export const endlessCleared = (progress) => Math.max(0, progress.endless - ENDLESS_FIRST);

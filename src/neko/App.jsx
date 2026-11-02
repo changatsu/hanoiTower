@@ -12,7 +12,7 @@ import {
   afterClear,
   endlessOpen,
   endlessCleared,
-  skipToEndless,
+  unlockAll,
   endlessNo,
   ENDLESS_FIRST,
   ENDLESS_LEVEL,
@@ -96,7 +96,7 @@ export default function App() {
   const [picking, setPicking] = useState(false); // ステージ選択画面
   const [openedNow, setOpenedNow] = useState(false); // いまエンドレスと超上級が開いた
 
-  // 隠し要素：タイトル「ねこだな」を素早く 7 回タップすると、上級 12 までクリアしたことになる
+  // 隠し要素：タイトル「ねこだな」を素早く 7 回タップすると、超上級 12 まで全ステージが開く
   const [toast, setToast] = useState(null);
   const secretTaps = useRef({ n: 0, t: 0 });
   const tapTitle = () => {
@@ -106,12 +106,12 @@ export default function App() {
     s.t = now;
     if (s.n < 7) return;
     s.n = 0;
-    const next = skipToEndless(progress);
+    const next = unlockAll(progress);
     save("neko-stage-unlocked", next.unlocked);
     save("neko-endless", next.endless);
     setProgress(next);
     sfx.win();
-    setToast("ひみつ発見！上級12までクリアしたことにしました。エンドレスと超上級で遊べます");
+    setToast("ひみつ発見！超上級12まで全ステージとエンドレスを開放しました");
     setTimeout(() => setToast(null), 3500);
   };
 

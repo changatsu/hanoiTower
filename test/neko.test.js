@@ -17,7 +17,7 @@ import {
   endlessOpen,
   endlessCleared,
   normalizeNo,
-  skipToEndless,
+  unlockAll,
   movableCount,
 } from "../src/neko/logic.js";
 
@@ -171,12 +171,11 @@ test("盤面は画面の幅と高さの両方に収まる大きさになる", as
   }
 });
 
-test("隠し要素：上級 12 までクリアしたことにすると、エンドレスと超上級が開く", () => {
-  const p = skipToEndless({ unlocked: 3, endless: 13 });
+test("隠し要素：超上級 12 まで全ステージとエンドレスが開く", () => {
+  const p = unlockAll({ unlocked: 3, endless: 13 });
   assert.equal(endlessOpen(p), true);
-  assert.equal(isUnlocked(36, p), true);
-  assert.equal(isUnlocked(37, p), true);
+  for (let no = 1; no <= TOTAL_STAGES; no++) assert.equal(isUnlocked(no, p), true);
   assert.equal(isUnlocked(1013, p), true);
-  // すでに先へ進んでいれば減らさない
-  assert.deepEqual(skipToEndless({ unlocked: 45, endless: 20 }), { unlocked: 45, endless: 20 });
+  assert.equal(isUnlocked(1014, p), false); // エンドレスは順番に進む
+  assert.deepEqual(unlockAll({ unlocked: 48, endless: 20 }), { unlocked: 48, endless: 20 });
 });
