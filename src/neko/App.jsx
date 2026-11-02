@@ -12,6 +12,7 @@ import {
   afterClear,
   endlessOpen,
   endlessCleared,
+  skipToEndless,
   endlessNo,
   ENDLESS_FIRST,
   ENDLESS_LEVEL,
@@ -94,6 +95,25 @@ export default function App() {
   const next = nextStage(no);
   const [picking, setPicking] = useState(false); // ステージ選択画面
   const [openedNow, setOpenedNow] = useState(false); // いまエンドレスと超上級が開いた
+
+  // 隠し要素：タイトル「ねこだな」を素早く 7 回タップすると、上級 12 までクリアしたことになる
+  const [toast, setToast] = useState(null);
+  const secretTaps = useRef({ n: 0, t: 0 });
+  const tapTitle = () => {
+    const now = Date.now();
+    const s = secretTaps.current;
+    s.n = now - s.t < 600 ? s.n + 1 : 1;
+    s.t = now;
+    if (s.n < 7) return;
+    s.n = 0;
+    const next = skipToEndless(progress);
+    save("neko-stage-unlocked", next.unlocked);
+    save("neko-endless", next.endless);
+    setProgress(next);
+    sfx.win();
+    setToast("ひみつ発見！上級12までクリアしたことにしました。エンドレスと超上級で遊べます");
+    setTimeout(() => setToast(null), 3500);
+  };
 
   // 盤面を画面に収める：画面の大きさや段数が変わるたびに、ねこの大きさを計算し直す
   const boardRef = useRef(null);
@@ -244,7 +264,7 @@ export default function App() {
       <header className="neko-header">
         {/* タイトル行：右にベストと説明の切り替えを小さく置く */}
         <div className="title-row">
-          <h1>ねこだな</h1>
+          <h1 onClick={tapTitle}>ねこだな</h1>
           <span className="best">
             ベスト <b>{best ?? "–"}</b>
           </span>
@@ -340,6 +360,12 @@ export default function App() {
           );
         })}
       </main>
+
+      {toast && (
+        <div className="toast" role="status">
+          {toast}
+        </div>
+      )}
 
       {picking && (
         <StagePicker

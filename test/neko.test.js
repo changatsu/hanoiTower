@@ -17,6 +17,7 @@ import {
   endlessOpen,
   endlessCleared,
   normalizeNo,
+  skipToEndless,
   movableCount,
 } from "../src/neko/logic.js";
 
@@ -168,4 +169,14 @@ test("盤面は画面の幅と高さの両方に収まる大きさになる", as
     const w = fitCatWidth({ width: 390, height: 640, aisle: 31, rows, cap: 4 });
     assert.ok(rows * (w * (98 / 84) + 20) + (rows - 1) * 6 + 14 <= 640);
   }
+});
+
+test("隠し要素：上級 12 までクリアしたことにすると、エンドレスと超上級が開く", () => {
+  const p = skipToEndless({ unlocked: 3, endless: 13 });
+  assert.equal(endlessOpen(p), true);
+  assert.equal(isUnlocked(36, p), true);
+  assert.equal(isUnlocked(37, p), true);
+  assert.equal(isUnlocked(1013, p), true);
+  // すでに先へ進んでいれば減らさない
+  assert.deepEqual(skipToEndless({ unlocked: 45, endless: 20 }), { unlocked: 45, endless: 20 });
 });

@@ -60,6 +60,7 @@ button { font: inherit; color: inherit; }
   color: var(--muted);
 }
 .title-row h1 {
+  touch-action: manipulation; /* 連続タップ（隠し要素）で拡大しないように */
   font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(22px, 6vw, 30px);
@@ -358,6 +359,25 @@ button { font: inherit; color: inherit; }
 .endless-entry:disabled { opacity: 0.45; }
 .level-picker .stage-name.endless::before { content: "∞"; margin-right: 3px; color: var(--glow); }
 @keyframes fade { from { opacity: 0; } }
+
+/* 隠し要素のお知らせ */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(320px, calc(100% - 32px));
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: #3a3060;
+  border: 1px solid var(--glow);
+  color: var(--glow);
+  font-size: 13px;
+  text-align: center;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+  animation: fade 0.3s ease-out;
+  z-index: 10;
+}
 
 
 @media (prefers-reduced-motion: reduce) {
