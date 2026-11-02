@@ -11,6 +11,7 @@ import {
 } from "./logic.js";
 import { SHELF_PAD_X, fitCatWidth } from "./layout.js";
 import { buildShareSvg, shareResult, svgToPngBlob } from "./share.js";
+import { setSoundEnabled, sfx, unlockAudio } from "./sound.js";
 
 const HINT = "真ん中の通路側が先頭です。棚をタップして先頭のねこを持ち上げ、同じ色のねこが先頭にいる棚か、空いている棚をタップします。";
 
@@ -48,6 +49,20 @@ export default function App() {
       return !v;
     });
   };
+  // 効果音（初期値はオン。選んだ設定は localStorage に残す）
+  const [soundOn, setSoundOn] = useState(() => load("neko-sound") !== 0);
+  useEffect(() => setSoundEnabled(soundOn), [soundOn]);
+  const toggleSound = () => {
+    setSoundOn((v) => {
+      save("neko-sound", v ? 0 : 1);
+      return !v;
+    });
+  };
+  // iPhone では、画面に触れたときに音を鳴らせる状態にする
+  useEffect(() => {
+    window.addEventListener("pointerdown", unlockAudio, true);
+    return () => window.removeEventListener("pointerdown", unlockAudio, true);
+  }, []);
   const [game, setGame] = useState(() => startState(load("neko-level") || 1));
   const [selected, setSelected] = useState(null);
   const [shake, setShake] = useState(null);
@@ -132,6 +147,7 @@ export default function App() {
     if (selected === null) {
       if (shelves[i].length === 0 || isShelfComplete(shelves[i], cap)) return;
       setSelected(i);
+      sfx.pick();
       return;
     }
     if (selected === i) {
@@ -150,9 +166,15 @@ export default function App() {
       });
       setGame({ ...game, shelves: next, history: [...history, shelves], moved, revealed });
       setSelected(null);
+      sfx.drop(shelves[selected][shelves[selected].length - 1].color);
+      if (revealed.size > 0) sfx.reveal();
+      if (isSolved(next, cap)) sfx.win();
+      else if (isShelfComplete(next[i], cap)) sfx.complete();
     } else if (shelves[i].length > 0 && !isShelfComplete(shelves[i], cap)) {
       setSelected(i); // 置けない棚をタップしたら、そちらを選び直す
+      sfx.pick();
     } else {
+      sfx.nope();
       setShake(i);
       setTimeout(() => setShake(null), 400);
     }
@@ -160,6 +182,7 @@ export default function App() {
 
   const undo = () => {
     if (history.length === 0) return;
+    sfx.undo();
     setGame({
       ...game,
       shelves: history[history.length - 1],
@@ -198,10 +221,14 @@ export default function App() {
           <span className="best">
             ベスト <b>{best ?? "–"}</b>
           </span>
-          <button className="help-toggle" onClick={toggleHelp} aria-pressed={showHelp}>
-            説明 {showHelp ? "オン" : "オフ"}
+          {/* オン／オフは枠の光り方で示す（狭い画面でも 1 行に収めるため文字は短く） */}
+          <button className="help-toggle" onClick={toggleHelp} aria-pressed={showHelp} aria-label={`説明 ${showHelp ? "オン" : "オフ"}`}>
+            説明
           </button>
-          <a href="../">ハノイの塔 ›</a>
+          <button className="help-toggle" onClick={toggleSound} aria-pressed={soundOn} aria-label={`音 ${soundOn ? "オン" : "オフ"}`}>
+            {soundOn ? "♪ 音" : "音 ✕"}
+          </button>
+          <a href="../">ハノイ ›</a>
         </div>
         {/* 操作行：レベル・手数・1手戻す・やり直しを 1 行に */}
         <div className="bar">
