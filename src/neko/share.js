@@ -7,31 +7,34 @@ const W = 1080;
 const MARGIN = 48;
 const AISLE = 72;
 const HEAD = 230;
+const STAR_H = 70; // ★の行の高さ
 const FOOT = 110;
 const PLANK = 22;
 const ROW_GAP = 34;
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
-export function shareText(label, moves) {
-  return `ねこだな ${label}をクリア！（${moves}手）\n${GAME_URL}`;
+export function shareText(label, moves, stars = "", streak = 0) {
+  const tail = streak > 1 ? `・${streak}日連続` : "";
+  return `ねこだな ${label}をクリア！${stars}（${moves}手${tail}）\n${GAME_URL}`;
 }
 
 // boardEl: 盤面（.shelves）の DOM。棚ごとの .cat-svg を取り出して並べ直す
-export function buildShareSvg({ boardEl, cap, label, moves }) {
+export function buildShareSvg({ boardEl, cap, label, moves, stars = "" }) {
   const shelfEls = [...boardEl.querySelectorAll(".shelf")];
   const colW = (W - MARGIN * 2 - AISLE) / 2;
   const slot = colW / cap;
   const catH = (slot * 98) / 84;
   const rowH = catH + PLANK + ROW_GAP;
   const rows = Math.ceil(shelfEls.length / 2);
-  const H = HEAD + rows * rowH + FOOT;
+  const head = HEAD + (stars ? STAR_H : 0);
+  const H = head + rows * rowH + FOOT;
 
   const parts = [];
   shelfEls.forEach((shelfEl, i) => {
     const right = i % 2 === 1;
     const colX = right ? MARGIN + colW + AISLE : MARGIN;
-    const top = HEAD + Math.floor(i / 2) * rowH;
+    const top = head + Math.floor(i / 2) * rowH;
     const cats = [...shelfEl.querySelectorAll(".cat-svg")];
     cats.forEach((svg, k) => {
       // 左の棚は左から、右の棚は右から並べる（どちらも通路側が先頭）
@@ -48,7 +51,7 @@ export function buildShareSvg({ boardEl, cap, label, moves }) {
 
   const aisleX = W / 2;
   const dots = [];
-  for (let y = HEAD; y < HEAD + rows * rowH - ROW_GAP; y += 36) dots.push(`<circle cx="${aisleX}" cy="${y}" r="4" fill="#ffd27a" opacity="0.6"/>`);
+  for (let y = head; y < head + rows * rowH - ROW_GAP; y += 36) dots.push(`<circle cx="${aisleX}" cy="${y}" r="4" fill="#ffd27a" opacity="0.6"/>`);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <defs>
@@ -58,6 +61,7 @@ export function buildShareSvg({ boardEl, cap, label, moves }) {
 <rect width="${W}" height="${H}" fill="url(#bg)"/>
 <text x="${W / 2}" y="105" text-anchor="middle" font-size="76" font-weight="900" fill="#ffd27a" font-family="Hiragino Sans, Hiragino Kaku Gothic ProN, Yu Gothic, sans-serif">ねこだな</text>
 <text x="${W / 2}" y="180" text-anchor="middle" font-size="46" font-weight="700" fill="#f3eee4" font-family="Hiragino Sans, Hiragino Kaku Gothic ProN, Yu Gothic, sans-serif">${esc(`${label} クリア！ ${moves} 手`)}</text>
+${stars ? `<text x="${W / 2}" y="${HEAD + 22}" text-anchor="middle" font-size="64" letter-spacing="12" fill="#ffd27a" font-family="Hiragino Sans, Hiragino Kaku Gothic ProN, Yu Gothic, sans-serif">${esc(stars)}</text>` : ""}
 ${dots.join("")}
 ${parts.join("\n")}
 <text x="${W / 2}" y="${H - 44}" text-anchor="middle" font-size="30" fill="#b9b0cf" font-family="Hiragino Sans, Yu Gothic, sans-serif">${esc(GAME_URL.replace("https://", ""))}</text>
@@ -87,8 +91,8 @@ export function svgToPngBlob(svgText) {
 
 // 画像つきで共有する。共有シート（LINE を選べる）が使えなければ、LINE の文字だけの共有を開く。
 // 戻り値: "shared" | "cancelled" | "line-text"
-export async function shareResult({ file, label, moves }) {
-  const text = shareText(label, moves);
+export async function shareResult({ file, label, moves, stars = "", streak = 0 }) {
+  const text = shareText(label, moves, stars, streak);
   if (file && navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file], text });

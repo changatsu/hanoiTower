@@ -345,7 +345,8 @@ button { font: inherit; color: inherit; }
 .win-news { margin: 6px 0 0; font-size: 13px; color: var(--glow); }
 
 /* エンドレスの入り口（ステージ選択の上級タブ） */
-.win-card button.endless-entry {
+.win-card button.endless-entry,
+.win-card button.daily-entry {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -354,8 +355,39 @@ button { font: inherit; color: inherit; }
   border-radius: 12px;
   border-color: rgba(255, 210, 122, 0.55);
 }
-.endless-entry .sub { font-size: 11px; color: var(--muted); font-weight: 500; }
-.endless-entry.current { background: rgba(255, 210, 122, 0.18); }
+.endless-entry .sub,
+.daily-entry .sub { font-size: 11px; color: var(--muted); font-weight: 500; }
+.endless-entry.current,
+.daily-entry.current { background: rgba(255, 210, 122, 0.18); }
+.win-card button.daily-entry { margin: 10px 0 0; }
+.daily-entry.fresh { border-color: var(--glow); box-shadow: 0 0 0 2px rgba(255, 210, 122, 0.25); }
+
+/* ★ */
+.stars { letter-spacing: 0.05em; white-space: nowrap; }
+.stars .on { color: var(--glow); }
+.stars .off { color: rgba(255, 255, 255, 0.22); }
+.stars.big { display: block; font-size: 34px; line-height: 1.1; margin: 2px 0 4px; }
+.stars.big .on { display: inline-block; animation: star-pop 0.45s ease-out backwards; }
+.stars.big .on:nth-child(2) { animation-delay: 0.15s; }
+.stars.big .on:nth-child(3) { animation-delay: 0.3s; }
+@keyframes star-pop {
+  0% { transform: scale(0.2) rotate(-30deg); opacity: 0; }
+  70% { transform: scale(1.25); opacity: 1; }
+  100% { transform: none; }
+}
+.win-target { display: block; font-size: 12px; color: var(--muted); }
+/* 今日の1問がまだのとき、ステージ名に小さな印 */
+.level-picker .stage-name.has-daily { position: relative; }
+.level-picker .stage-name.has-daily::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff7a7a;
+}
 .endless-entry:disabled { opacity: 0.45; }
 .level-picker .stage-name.endless::before { content: "∞"; margin-right: 3px; color: var(--glow); }
 @keyframes fade { from { opacity: 0; } }
@@ -381,7 +413,7 @@ button { font: inherit; color: inherit; }
 
 
 @media (prefers-reduced-motion: reduce) {
-  .cat, .cat.arrive, .cat.reveal, .win-cats .cat, .shelf.shake, .bar button.nudge { animation: none; transition: none; }
+  .cat, .cat.arrive, .cat.reveal, .win-cats .cat, .stars.big .on, .shelf.shake, .bar button.nudge { animation: none; transition: none; }
 }
 
 /* 幅の狭いスマホ（iPhone SE など）でも操作行を 1 行に収める */

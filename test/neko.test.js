@@ -18,6 +18,15 @@ import {
   endlessCleared,
   normalizeNo,
   unlockAll,
+  minMoves,
+  starTargets,
+  starsFor,
+  starText,
+  dailyNo,
+  dailyDate,
+  dailyStreak,
+  isDaily,
+  isEndless,
   movableCount,
 } from "../src/neko/logic.js";
 
@@ -78,7 +87,7 @@ test("解けるかの判定", () => {
 
 test("初級・中級・上級・超上級が 12 ステージずつで、難しさは後ろほど上がる", () => {
   assert.equal(TOTAL_STAGES, 48);
-  assert.deepEqual(stageInfo(1), { no: 1, levelIndex: 0, levelName: "初級", stage: 1, endless: false, label: "初級 ステージ1" });
+  assert.deepEqual(stageInfo(1), { no: 1, levelIndex: 0, levelName: "初級", barName: "初級", stage: 1, endless: false, daily: false, label: "初級 ステージ1" });
   assert.equal(stageInfo(12).label, "初級 ステージ12");
   assert.equal(stageInfo(13).label, "中級 ステージ1");
   assert.equal(stageInfo(36).label, "上級 ステージ12");
@@ -178,4 +187,59 @@ test("隠し要素：超上級 12 まで全ステージとエンドレスが開�
   assert.equal(isUnlocked(1013, p), true);
   assert.equal(isUnlocked(1014, p), false); // エンドレスは順番に進む
   assert.deepEqual(unlockAll({ unlocked: 48, endless: 20 }), { unlocked: 48, endless: 20 });
+});
+
+test("最短手数：全部見えていれば何手で解けるか", () => {
+  assert.equal(minMoves([[0, 1], [1, 0], []], 2), 3);
+  assert.equal(minMoves([[0, 0], [1, 1], []], 2), 0);
+  assert.equal(minMoves([[0, 1], [1, 0]], 2), null);
+  // どのステージも最短手数が求まり、★の目標はその手数以上
+  for (const no of [1, 12, 24, 36, 48, 1013, 1100]) {
+    const { targets } = createStage(no);
+    assert.ok(targets && targets.min > 0, `stage ${no}`);
+    assert.ok(targets.min <= targets.three && targets.three < targets.two);
+  }
+});
+
+test("★は手数で 3 段階", () => {
+  const t = starTargets(20, 6); // 最短 20 手、？が 6 匹
+  assert.deepEqual(t, { min: 20, three: 22, two: 28 });
+  assert.equal(starsFor(22, t), 3);
+  assert.equal(starsFor(23, t), 2);
+  assert.equal(starsFor(28, t), 2);
+  assert.equal(starsFor(29, t), 1);
+  assert.equal(starsFor(99, null), 3); // 目標が出せない面は★3
+  assert.equal(starText(2), "★★☆");
+});
+
+test("今日の1問：日付で決まり、曜日で難しさが変わり、いつでも遊べる", () => {
+  const no = dailyNo(new Date(2026, 10, 6)); // 2026/11/6（金）
+  assert.equal(no, 20261106);
+  assert.equal(isDaily(no), true);
+  assert.equal(isEndless(no), false);
+  assert.equal(dailyDate(20261131), null);
+  const info = stageInfo(no);
+  assert.equal(info.label, "今日の1問（11/6）");
+  assert.equal(info.weekday, "金");
+  assert.equal(stageConfig(20261102).colors, 5); // 月曜はやさしい
+  assert.equal(stageConfig(20261108).colors, 9); // 日曜はいちばん難しい
+  assert.equal(isUnlocked(no, { unlocked: 1, endless: 13 }), true);
+  assert.deepEqual(afterClear(no, { unlocked: 1, endless: 13 }), { unlocked: 1, endless: 13 });
+  assert.equal(prevStage(no), null);
+  assert.equal(nextStage(no), null);
+  assert.equal(normalizeNo(20261131), 1);
+  const a = createStage(no);
+  assert.deepEqual(createStage(no), a);
+  assert.equal(isSolvable(a.shelves.map((s) => s.map((c) => c.color)), a.cap), true);
+  assert.notDeepEqual(colorsOf(createStage(20261107).shelves), colorsOf(a.shelves));
+});
+
+test("今日の1問の連続日数", () => {
+  const cleared = new Set([20261104, 20261105, 20261106]);
+  const has = (d) => cleared.has(d);
+  assert.equal(dailyStreak(has, new Date(2026, 10, 6)), 3);
+  assert.equal(dailyStreak(has, new Date(2026, 10, 7)), 3); // 今日まだなら昨日まで数える
+  assert.equal(dailyStreak(has, new Date(2026, 10, 8)), 0);
+  // 月をまたいでも続く
+  assert.equal(dailyStreak((d) => [20261031, 20261101].includes(d), new Date(2026, 10, 1)), 2);
 });

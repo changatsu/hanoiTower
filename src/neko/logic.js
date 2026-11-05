@@ -25,36 +25,75 @@ export const ENDLESS_FIRST = STAGES_PER_LEVEL + 1; // 上級 13 から
 export const ENDLESS_BASE = 1000;
 const LAST_REGULAR = (ENDLESS_LEVEL + 1) * STAGES_PER_LEVEL; // 上級 12（= 36）
 
-export const isEndless = (no) => no > ENDLESS_BASE;
+// 今日の1問（デイリー）の通し番号は日付そのもの（2026 年 11 月 6 日 = 20261106）
+export const DAILY_BASE = 20000000;
+export const isDaily = (no) => no >= DAILY_BASE;
+export const isEndless = (no) => no > ENDLESS_BASE && !isDaily(no);
 export const endlessNo = (stage) => ENDLESS_BASE + stage;
 
-// 通し番号 → { levelIndex, levelName, stage（レベル内の番号）, endless, label }
+// ---- 今日の1問 ----
+// 日付（端末のその日）から決まる 1 日 1 問。曜日で難しさが変わる（月曜がやさしく、日曜がいちばん難しい）
+const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+const DAILY_CONFIG = {
+  1: { colors: 5, hidden: 0.3 },
+  2: { colors: 6, hidden: 0.35 },
+  3: { colors: 6, hidden: 0.4 },
+  4: { colors: 7, hidden: 0.45 },
+  5: { colors: 7, hidden: 0.5 },
+  6: { colors: 8, hidden: 0.55 },
+  0: { colors: 9, hidden: 0.6 },
+};
+export const dailyNo = (date = new Date()) => date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
+export function dailyDate(no) {
+  const d = new Date(Math.floor(no / 10000), Math.floor(no / 100) % 100 - 1, no % 100);
+  return dailyNo(d) === no ? d : null; // 存在しない日付は null
+}
+// 何日続けて今日の1問を解いたか。isCleared(no) はその日を解いたかどうか。今日をまだ解いていなければ昨日から数える
+export function dailyStreak(isCleared, today = new Date()) {
+  const d = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  if (!isCleared(dailyNo(d))) d.setDate(d.getDate() - 1);
+  let n = 0;
+  while (n < 3650 && isCleared(dailyNo(d))) {
+    n++;
+    d.setDate(d.getDate() - 1);
+  }
+  return n;
+}
+
+// 通し番号 → { levelIndex, levelName, barName（操作行の表示）, stage（レベル内の番号）, endless, daily, label }
 export function stageInfo(no) {
+  if (isDaily(no) && dailyDate(no)) {
+    const d = dailyDate(no);
+    const md = `${d.getMonth() + 1}/${d.getDate()}`;
+    return { no, levelIndex: -1, levelName: "今日の1問", barName: "今日", stage: md, endless: false, daily: true, weekday: WEEKDAYS[d.getDay()], label: `今日の1問（${md}）` };
+  }
   if (isEndless(no)) {
     const stage = Math.max(ENDLESS_FIRST, no - ENDLESS_BASE);
     const levelName = LEVELS[ENDLESS_LEVEL].name;
-    return { no: endlessNo(stage), levelIndex: ENDLESS_LEVEL, levelName, stage, endless: true, label: `${levelName} ステージ${stage}` };
+    return { no: endlessNo(stage), levelIndex: ENDLESS_LEVEL, levelName, barName: levelName, stage, endless: true, daily: false, label: `${levelName} ステージ${stage}` };
   }
   const n = Math.min(Math.max(1, no), TOTAL_STAGES);
   const levelIndex = Math.floor((n - 1) / STAGES_PER_LEVEL);
   const stage = n - levelIndex * STAGES_PER_LEVEL;
   const levelName = LEVELS[levelIndex].name;
-  return { no: n, levelIndex, levelName, stage, endless: false, label: `${levelName} ステージ${stage}` };
+  return { no: n, levelIndex, levelName, barName: levelName, stage, endless: false, daily: false, label: `${levelName} ステージ${stage}` };
 }
 
 export const stageNo = (levelIndex, stage) => levelIndex * STAGES_PER_LEVEL + stage;
 
 // 正しい通し番号に直す（保存された値が壊れていても遊べるように）
-export const normalizeNo = (no) => stageInfo(Number.isFinite(no) ? no : 1).no;
+export const normalizeNo = (no) => (isDaily(no) && !dailyDate(no) ? 1 : stageInfo(Number.isFinite(no) ? no : 1).no);
 
 // ‹ › で移る先。上級 12 の次はエンドレス（上級 13）、上級 13 の前は上級 12。
 // 超上級へは上級 12 のクリア画面かステージ選択から入る（超上級 1 の前は上級 12）。
 export function prevStage(no) {
+  if (isDaily(no)) return null;
   if (isEndless(no)) return no - ENDLESS_BASE <= ENDLESS_FIRST ? LAST_REGULAR : no - 1;
   if (no === LAST_REGULAR + 1) return LAST_REGULAR;
   return no > 1 ? no - 1 : null;
 }
 export function nextStage(no) {
+  if (isDaily(no)) return null;
   if (isEndless(no)) return no + 1;
   if (no === LAST_REGULAR) return endlessNo(ENDLESS_FIRST);
   return no < TOTAL_STAGES ? no + 1 : null;
@@ -63,11 +102,13 @@ export function nextStage(no) {
 // 進み具合 progress = { unlocked: 遊べる最後の通し番号（1〜48）, endless: 遊べる最後のエンドレスのステージ（13〜） }
 export const endlessOpen = (progress) => progress.unlocked > LAST_REGULAR;
 export function isUnlocked(no, progress) {
+  if (isDaily(no)) return true;
   if (isEndless(no)) return endlessOpen(progress) && no - ENDLESS_BASE <= progress.endless;
   return no <= progress.unlocked;
 }
 // no をクリアしたあとの進み具合
 export function afterClear(no, progress) {
+  if (isDaily(no)) return progress;
   if (isEndless(no)) return { ...progress, endless: Math.max(progress.endless, no - ENDLESS_BASE + 1) };
   return { ...progress, unlocked: Math.max(progress.unlocked, Math.min(no + 1, TOTAL_STAGES)) };
 }
@@ -82,6 +123,7 @@ export const endlessCleared = (progress) => Math.max(0, progress.endless - ENDLE
 // エンドレスは上級 12 と同じ難しさで、盤面だけが毎回変わる
 export function stageConfig(no) {
   if (isEndless(no)) return stageConfig(LAST_REGULAR);
+  if (isDaily(no)) return { ...DAILY_CONFIG[dailyDate(no).getDay()], cap: 4, empty: 2 };
   const { levelIndex, stage } = stageInfo(no);
   const lv = LEVELS[levelIndex];
   const t = (stage - 1) / (STAGES_PER_LEVEL - 1);
@@ -215,6 +257,77 @@ export function isSolvable(colorShelves, cap, limit = 200000) {
   return dfs(colorShelves) === true;
 }
 
+// ---- ★の評価 ----
+
+// 全部の色が見えている前提での最短手数（A*）。見つからなければ null
+// 下限の見積もり：棚の中の「同じ色のかたまり」は、棚の底にあって
+// その色の置き場になれるもの（色ごとに 1 つ）以外は少なくとも 1 回動かす必要がある
+function blocksBound(st) {
+  let blocks = 0;
+  const bottoms = new Set();
+  for (const s of st) {
+    if (!s.length) continue;
+    bottoms.add(s[0]);
+    blocks++;
+    for (let i = 1; i < s.length; i++) if (s[i] !== s[i - 1]) blocks++;
+  }
+  return blocks - bottoms.size;
+}
+export function minMoves(colorShelves, cap, limit = 100000) {
+  const solved = (st) => st.every((s) => s.length === 0 || (s.length === cap && s.every((c) => c === s[0])));
+  const best = new Map([[keyOf(colorShelves), 0]]);
+  const buckets = [[{ st: colorShelves, g: 0 }]];
+  let nodes = 0;
+  for (let f = 0; f < buckets.length; f++) {
+    const bucket = buckets[f];
+    while (bucket && bucket.length) {
+      const { st, g } = bucket.pop();
+      if (best.get(keyOf(st)) < g) continue;
+      if (solved(st)) return g;
+      if (++nodes > limit) return null;
+      for (let i = 0; i < st.length; i++) {
+        const src = st[i];
+        if (!src.length) continue;
+        const c = src[src.length - 1];
+        let run = 0;
+        for (let p = src.length - 1; p >= 0 && src[p] === c; p--) run++;
+        let triedEmpty = false;
+        for (let j = 0; j < st.length; j++) {
+          if (i === j) continue;
+          const dst = st[j];
+          if (dst.length >= cap) continue;
+          if (!dst.length) {
+            if (run === src.length || triedEmpty) continue;
+            triedEmpty = true;
+          } else if (dst[dst.length - 1] !== c) continue;
+          const n = Math.min(run, cap - dst.length);
+          const next = st.slice();
+          next[i] = src.slice(0, -n);
+          next[j] = dst.concat(Array(n).fill(c));
+          const k = keyOf(next);
+          if (best.has(k) && best.get(k) <= g + 1) continue;
+          best.set(k, g + 1);
+          const nf = Math.max(f, g + 1 + blocksBound(next));
+          (buckets[nf] ||= []).push({ st: next, g: g + 1 });
+        }
+      }
+    }
+  }
+  return null;
+}
+
+// ★の目標手数。？の色は先頭に来るまでわからないので、最短手数に？の数の 1/3 だけ余裕をもたせる
+export function starTargets(min, hiddenCount) {
+  if (min === null) return null;
+  const three = min + Math.ceil(hiddenCount / 3);
+  return { min, three, two: three + Math.ceil(min * 0.3) };
+}
+export function starsFor(moves, targets) {
+  if (!targets) return 3;
+  return moves <= targets.three ? 3 : moves <= targets.two ? 2 : 1;
+}
+export const starText = (n) => "★".repeat(n) + "☆".repeat(3 - n);
+
 // ステージ（通し番号 no）の盤面を作る。戻り値 { shelves, cap, colors }
 export function createStage(no) {
   const cfg = stageConfig(no);
@@ -241,7 +354,8 @@ export function createStage(no) {
         hidden: i < s.length - 1 && rand() < cfg.hidden,
       }))
     );
-    return { shelves: revealFronts(shelves), cap: cfg.cap, colors: cfg.colors };
+    const hiddenCount = shelves.flat().filter((c) => c.hidden).length;
+    return { shelves: revealFronts(shelves), cap: cfg.cap, colors: cfg.colors, targets: starTargets(minMoves(colorShelves, cfg.cap), hiddenCount) };
   }
   throw new Error("level generation failed");
 }

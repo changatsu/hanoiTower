@@ -19,6 +19,11 @@ import {
   LEVELS,
   STAGES_PER_LEVEL,
   TOTAL_STAGES,
+  dailyNo,
+  dailyStreak,
+  isDaily,
+  starsFor,
+  starText,
   frontRun,
   hasAnyMove,
   isShelfComplete,
@@ -49,11 +54,36 @@ function save(key, v) {
 }
 const LAST_REGULAR = stageNo(ENDLESS_LEVEL, STAGES_PER_LEVEL); // 上級 12：クリアするとエンドレスと超上級が開く
 const bestKey = (no) => `neko-best-s${no}`; // ステージ（通し番号）ごとの自己ベスト
+const starKey = (no) => `neko-star-s${no}`; // ステージごとの★の最高
 
+// そのステージの★（まだクリアしていなければ 0）。★を記録する前のベストは、その手数から★を出して保存する
+function starsOf(no) {
+  const saved = load(starKey(no));
+  if (saved !== null) return saved;
+  const best = load(bestKey(no));
+  if (best === null) return 0;
+  const stars = starsFor(best, createStage(no).targets);
+  save(starKey(no), stars);
+  return stars;
+}
+const lastStage = () => normalizeNo(load("neko-stage") || 1); // いつものステージ（今日の1問に入る前のステージ）
+const todayStreak = () => dailyStreak((d) => load(bestKey(d)) !== null);
+
+function Stars({ n, className = "" }) {
+  return (
+    <span className={`stars ${className}`} aria-label={`星 ${n} つ`}>
+      {[1, 2, 3].map((k) => (
+        <span key={k} className={k <= n ? "on" : "off"}>
+          ★
+        </span>
+      ))}
+    </span>
+  );
+}
 
 function startState(no) {
-  const { shelves, cap } = createStage(no);
-  return { no, cap, shelves, history: [], moved: new Set(), revealed: new Set() };
+  const { shelves, cap, targets: goal } = createStage(no);
+  return { no, cap, shelves, goal, history: [], moved: new Set(), revealed: new Set() };
 }
 
 export default function App() {
@@ -89,7 +119,7 @@ export default function App() {
   const [shake, setShake] = useState(null);
   const [best, setBest] = useState(() => load(bestKey(game.no)));
 
-  const { no, cap, shelves, history } = game;
+  const { no, cap, shelves, history, goal } = game;
   const info = stageInfo(no);
   const prev = prevStage(no);
   const next = nextStage(no);
@@ -143,6 +173,9 @@ export default function App() {
   }, [rows, cap, showHelp]);
   const moves = history.length;
   const won = isSolved(shelves, cap);
+  const stars = starsFor(moves, goal);
+  const today = dailyNo();
+  const dailyDone = load(bestKey(today)) !== null || (won && no === today);
   const stuck = !won && !hasAnyMove(shelves, cap);
 
   const goStage = useCallback((lv) => {
@@ -150,7 +183,7 @@ export default function App() {
     setSelected(null);
     setOpenedNow(false);
     setBest(load(bestKey(lv)));
-    save("neko-stage", lv);
+    if (!isDaily(lv)) save("neko-stage", lv); // 今日の1問は「いつものステージ」として覚えない
   }, []);
 
   // クリアしたら共有用の画像を先に作っておく（共有ボタンを押した瞬間に共有シートを開けるように）
@@ -159,7 +192,7 @@ export default function App() {
     if (!won || !boardRef.current) return;
     let url = null;
     let alive = true;
-    const svg = buildShareSvg({ boardEl: boardRef.current, cap, label: info.label, moves });
+    const svg = buildShareSvg({ boardEl: boardRef.current, cap, label: info.label, moves, stars: starText(stars) });
     svgToPngBlob(svg)
       .then((blob) => {
         if (!alive) return;
@@ -182,6 +215,7 @@ export default function App() {
       save(bestKey(no), moves);
       setBest(moves);
     }
+    if (stars > starsOf(no)) save(starKey(no), stars);
     const next = afterClear(no, progress);
     if (!endlessOpen(progress) && endlessOpen(next)) setOpenedNow(true);
     if (next.unlocked !== progress.unlocked) save("neko-stage-unlocked", next.unlocked);
@@ -257,7 +291,7 @@ export default function App() {
         ? targets.size > 0
           ? "光っている棚に置けます。"
           : "置ける棚がありません。別の棚を選んでください。"
-        : HINT;
+        : `${HINT}${goal ? `★3 は ${goal.three} 手以内。` : ""}`;
 
   return (
     <div className="neko-app">
@@ -283,8 +317,12 @@ export default function App() {
             <button aria-label="前のステージ" disabled={prev === null} onClick={() => goStage(prev)}>
               ‹
             </button>
-            <button className={`stage-name${info.endless ? " endless" : ""}`} onClick={() => setPicking(true)} aria-label={`${info.label}（ステージを選ぶ）`}>
-              {info.levelName}
+            <button
+              className={["stage-name", info.endless && "endless", !dailyDone && !info.daily && "has-daily"].filter(Boolean).join(" ")}
+              onClick={() => setPicking(true)}
+              aria-label={`${info.label}（ステージを選ぶ${dailyDone ? "" : "。今日の1問がまだです"}）`}
+            >
+              {info.barName}
               <b>{info.stage}</b>
             </button>
             <button aria-label="次のステージ" disabled={next === null || !isUnlocked(next, progress)} onClick={() => goStage(next)}>
@@ -371,6 +409,7 @@ export default function App() {
         <StagePicker
           current={no}
           progress={progress}
+          today={today}
           onPick={(n) => {
             setPicking(false);
             goStage(n);
@@ -382,14 +421,19 @@ export default function App() {
       {won && !picking && (
         <div className="win" role="dialog" aria-label="クリア">
           <div className="win-card">
-            <p className="win-sub">{info.endless ? `${info.levelName}・エンドレス` : info.levelName}</p>
-            <p className="win-title">
-              {no === TOTAL_STAGES ? "全ステージクリア！" : `ステージ ${info.stage} クリア！`}
+            <p className="win-sub">
+              {info.daily ? `${info.levelName}（${info.weekday}）` : info.endless ? `${info.levelName}・エンドレス` : info.levelName}
             </p>
+            <p className="win-title">
+              {info.daily ? `${info.stage} クリア！` : no === TOTAL_STAGES ? "全ステージクリア！" : `ステージ ${info.stage} クリア！`}
+            </p>
+            <Stars n={stars} className="big" />
             <p>
               {moves} 手{best === moves ? "（自己ベスト）" : ""}
+              {goal && stars < 3 && <span className="win-target">★3 は {goal.three} 手以内</span>}
               {info.endless && <><br />エンドレス {info.stage - STAGES_PER_LEVEL} 回目クリア</>}
             </p>
+            {info.daily && <p className="win-news">今日の1問 {todayStreak()} 日連続</p>}
             {openedNow && <p className="win-news">エンドレスと超上級が遊べるようになりました！</p>}
             {shareImg ? (
               <img className="share-preview" src={shareImg.url} alt={`${info.label}の完成した棚`} />
@@ -402,7 +446,12 @@ export default function App() {
                 ))}
               </div>
             )}
-            <button className="line" onClick={() => shareResult({ file: shareImg?.file, label: info.label, moves })}>
+            <button
+              className="line"
+              onClick={() =>
+                shareResult({ file: shareImg?.file, label: info.label, moves, stars: starText(stars), streak: info.daily ? todayStreak() : 0 })
+              }
+            >
               LINEで送る
             </button>
             {next !== null && (
@@ -414,6 +463,11 @@ export default function App() {
                   : info.stage === STAGES_PER_LEVEL
                     ? `${LEVELS[info.levelIndex + 1].name}へ進む`
                     : "次のステージへ"}
+              </button>
+            )}
+            {info.daily && (
+              <button className="primary" onClick={() => goStage(lastStage())}>
+                いつものステージへ
               </button>
             )}
             {no === LAST_REGULAR && (
@@ -431,14 +485,33 @@ export default function App() {
 }
 
 // ステージ選択：レベルのタブと 12 ステージのボタン。上級のタブには、上級 12 のクリア後にエンドレスの入り口が出る
-function StagePicker({ current, progress, onPick, onClose }) {
-  const [tab, setTab] = useState(stageInfo(current).levelIndex);
+function StagePicker({ current, progress, today, onPick, onClose }) {
+  const [tab, setTab] = useState(() => stageInfo(isDaily(current) ? lastStage() : current).levelIndex);
+  const todayInfo = stageInfo(today);
+  const todayBest = load(bestKey(today));
+  const streak = todayStreak();
   const open = endlessOpen(progress);
   const cleared = endlessCleared(progress);
   return (
     <div className="win" role="dialog" aria-label="ステージを選ぶ" onClick={onClose}>
       <div className="win-card picker" onClick={(e) => e.stopPropagation()}>
         <p className="win-title">ステージを選ぶ</p>
+        {/* 今日の1問：日付で決まる 1 日 1 問。曜日で難しさが変わる */}
+        <button className={`daily-entry${current === today ? " current" : ""}${todayBest === null ? " fresh" : ""}`} onClick={() => onPick(today)}>
+          <span>
+            📅 今日の1問　<b>{todayInfo.stage}（{todayInfo.weekday}）</b>
+          </span>
+          <span className="sub">
+            {todayBest !== null ? (
+              <>
+                <Stars n={starsOf(today)} /> {todayBest}手
+              </>
+            ) : (
+              "まだ解いていません"
+            )}
+            {streak > 0 && `・${streak} 日連続`}
+          </span>
+        </button>
         <div className="tabs" role="tablist">
           {LEVELS.map((lv, i) => (
             <button key={lv.name} role="tab" aria-selected={tab === i} disabled={!isUnlocked(stageNo(i, 1), progress)} onClick={() => setTab(i)}>
@@ -451,16 +524,17 @@ function StagePicker({ current, progress, onPick, onClose }) {
             const n = stageNo(tab, k + 1);
             const best = load(bestKey(n));
             const locked = !isUnlocked(n, progress);
+            const st = best !== null ? starsOf(n) : 0;
             return (
               <button
                 key={n}
                 className={[n === current && "current", best !== null && "cleared"].filter(Boolean).join(" ")}
                 disabled={locked}
                 onClick={() => onPick(n)}
-                aria-label={`${stageInfo(n).label}${locked ? "（まだ遊べません）" : best !== null ? `（ベスト ${best} 手）` : ""}`}
+                aria-label={`${stageInfo(n).label}${locked ? "（まだ遊べません）" : best !== null ? `（星 ${st} つ、ベスト ${best} 手）` : ""}`}
               >
                 <span className="num">{k + 1}</span>
-                <span className="sub">{locked ? "🔒" : best !== null ? `${best}手` : ""}</span>
+                <span className="sub">{locked ? "🔒" : best !== null ? <Stars n={st} /> : ""}</span>
               </button>
             );
           })}
