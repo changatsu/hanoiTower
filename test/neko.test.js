@@ -103,39 +103,41 @@ test("初級・中級・上級・超上級が 12 ステージずつで、難し�
   assert.equal(stageConfig(48).empty, 2);
 });
 
-test("エンドレスは上級 13 から数え、難しさは上級 12 と同じで盤面は毎回変わる", () => {
-  assert.equal(stageInfo(1013).label, "上級 ステージ13");
+test("エンドレスは超上級 13 から数え、難しさは超上級 12 と同じで盤面は毎回変わる", () => {
+  assert.equal(stageInfo(1013).label, "超上級 ステージ13");
   assert.equal(stageInfo(1013).endless, true);
   assert.equal(stageInfo(1100).stage, 100);
-  assert.deepEqual(stageConfig(1013), stageConfig(36));
-  assert.deepEqual(stageConfig(1200), stageConfig(36));
+  assert.deepEqual(stageConfig(1013), stageConfig(48));
+  assert.deepEqual(stageConfig(1200), stageConfig(48));
   assert.notDeepEqual(colorsOf(createStage(1013).shelves), colorsOf(createStage(1014).shelves));
   assert.equal(normalizeNo(1005), 1013);
   assert.equal(normalizeNo(99), 48);
   assert.equal(normalizeNo(NaN), 1);
 });
 
-test("‹ › の移動：上級 12 の次はエンドレス、超上級 1 の前は上級 12", () => {
+test("‹ › の移動：上級 12 の次は超上級 1、超上級 12 の次はエンドレス", () => {
   assert.equal(prevStage(1), null);
   assert.equal(nextStage(12), 13);
-  assert.equal(nextStage(36), 1013);
-  assert.equal(prevStage(1013), 36);
+  assert.equal(nextStage(36), 37);
+  assert.equal(prevStage(37), 36);
+  assert.equal(nextStage(48), 1013);
+  assert.equal(prevStage(1013), 48);
   assert.equal(nextStage(1013), 1014);
   assert.equal(prevStage(1014), 1013);
-  assert.equal(prevStage(37), 36);
-  assert.equal(nextStage(37), 38);
-  assert.equal(nextStage(48), null);
 });
 
-test("上級 12 をクリアするとエンドレスと超上級が開き、エンドレスは何回クリアしたかを数える", () => {
+test("超上級 12 をクリアするとエンドレスが開き、エンドレスは何回クリアしたかを数える", () => {
   let p = { unlocked: 36, endless: 13 };
-  assert.equal(endlessOpen(p), false);
   assert.equal(isUnlocked(37, p), false);
-  assert.equal(isUnlocked(1013, p), false);
   p = afterClear(36, p);
+  assert.equal(isUnlocked(37, p), true); // 上級 12 のあとは超上級
+  assert.equal(endlessOpen(p), false);
+  assert.equal(isUnlocked(1013, p), false);
+  p = { unlocked: 48, endless: 13 };
+  assert.equal(endlessOpen(p), false);
+  p = afterClear(48, p);
   assert.equal(endlessOpen(p), true);
-  assert.equal(isUnlocked(37, p), true);
-  assert.equal(isUnlocked(38, p), false);
+  assert.equal(isUnlocked(48, p), true);
   assert.equal(isUnlocked(1013, p), true);
   assert.equal(isUnlocked(1014, p), false);
   assert.equal(endlessCleared(p), 0);
@@ -145,7 +147,7 @@ test("上級 12 をクリアするとエンドレスと超上級が開き、エ�
   assert.equal(endlessCleared(p), 2);
   p = afterClear(1013, p); // 前のステージをやり直しても減らない
   assert.equal(endlessCleared(p), 2);
-  assert.equal(afterClear(48, p).unlocked, 48);
+  assert.equal(afterClear(48, p).unlocked, p.unlocked);
 });
 
 test("どのステージも解ける面が作られ、同じステージは同じ盤面になる", () => {
@@ -186,7 +188,7 @@ test("隠し要素：超上級 12 まで全ステージとエンドレスが開�
   for (let no = 1; no <= TOTAL_STAGES; no++) assert.equal(isUnlocked(no, p), true);
   assert.equal(isUnlocked(1013, p), true);
   assert.equal(isUnlocked(1014, p), false); // エンドレスは順番に進む
-  assert.deepEqual(unlockAll({ unlocked: 48, endless: 20 }), { unlocked: 48, endless: 20 });
+  assert.deepEqual(unlockAll({ unlocked: 49, endless: 20 }), { unlocked: 49, endless: 20 }); // すでに進んでいれば変えない
 });
 
 test("最短手数：全部見えていれば何手で解けるか", () => {

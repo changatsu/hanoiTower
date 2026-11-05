@@ -7,8 +7,8 @@ export const COLOR_COUNT = 9;
 
 // ステージ構成：レベル（初級・中級・上級・超上級）ごとに 12 ステージ。
 // 内部では通し番号 no で扱う。初級 1 = 1、中級 1 = 13、上級 1 = 25、超上級 1 = 37。
-// 上級 12 をクリアすると、超上級と「エンドレス」（上級 13, 14, … と続く）が開放される。
-// エンドレスの通し番号は ENDLESS_BASE + ステージ（上級 13 = 1013）。
+// 超上級 12 をクリアすると「エンドレス」（超上級 13, 14, … と続く）が開放される。
+// エンドレスの通し番号は ENDLESS_BASE + ステージ（超上級 13 = 1013）。
 export const LEVELS = [
   // colors: 色の数（1 ステージ目 → 12 ステージ目）、hidden: ？になる割合（同）
   { name: "初級", colors: [3, 5], hidden: [0, 0.25] },
@@ -20,10 +20,10 @@ export const LEVELS = [
 ];
 export const STAGES_PER_LEVEL = 12;
 export const TOTAL_STAGES = LEVELS.length * STAGES_PER_LEVEL;
-export const ENDLESS_LEVEL = 2; // 上級の続き
-export const ENDLESS_FIRST = STAGES_PER_LEVEL + 1; // 上級 13 から
+export const ENDLESS_LEVEL = LEVELS.length - 1; // 超上級の続き
+export const ENDLESS_FIRST = STAGES_PER_LEVEL + 1; // 超上級 13 から
 export const ENDLESS_BASE = 1000;
-const LAST_REGULAR = (ENDLESS_LEVEL + 1) * STAGES_PER_LEVEL; // 上級 12（= 36）
+const LAST_REGULAR = TOTAL_STAGES; // 超上級 12（= 48）
 
 // 今日の1問（デイリー）の通し番号は日付そのもの（2026 年 11 月 6 日 = 20261106）
 export const DAILY_BASE = 20000000;
@@ -84,22 +84,20 @@ export const stageNo = (levelIndex, stage) => levelIndex * STAGES_PER_LEVEL + st
 // 正しい通し番号に直す（保存された値が壊れていても遊べるように）
 export const normalizeNo = (no) => (isDaily(no) && !dailyDate(no) ? 1 : stageInfo(Number.isFinite(no) ? no : 1).no);
 
-// ‹ › で移る先。上級 12 の次はエンドレス（上級 13）、上級 13 の前は上級 12。
-// 超上級へは上級 12 のクリア画面かステージ選択から入る（超上級 1 の前は上級 12）。
+// ‹ › で移る先。超上級 12 の次はエンドレス（超上級 13）、超上級 13 の前は超上級 12。
 export function prevStage(no) {
   if (isDaily(no)) return null;
   if (isEndless(no)) return no - ENDLESS_BASE <= ENDLESS_FIRST ? LAST_REGULAR : no - 1;
-  if (no === LAST_REGULAR + 1) return LAST_REGULAR;
   return no > 1 ? no - 1 : null;
 }
 export function nextStage(no) {
   if (isDaily(no)) return null;
   if (isEndless(no)) return no + 1;
   if (no === LAST_REGULAR) return endlessNo(ENDLESS_FIRST);
-  return no < TOTAL_STAGES ? no + 1 : null;
+  return no + 1;
 }
 
-// 進み具合 progress = { unlocked: 遊べる最後の通し番号（1〜48）, endless: 遊べる最後のエンドレスのステージ（13〜） }
+// 進み具合 progress = { unlocked: 遊べる最後の通し番号（1〜48、超上級 12 をクリアすると 49）, endless: 遊べる最後のエンドレスのステージ（13〜） }
 export const endlessOpen = (progress) => progress.unlocked > LAST_REGULAR;
 export function isUnlocked(no, progress) {
   if (isDaily(no)) return true;
@@ -110,17 +108,18 @@ export function isUnlocked(no, progress) {
 export function afterClear(no, progress) {
   if (isDaily(no)) return progress;
   if (isEndless(no)) return { ...progress, endless: Math.max(progress.endless, no - ENDLESS_BASE + 1) };
-  return { ...progress, unlocked: Math.max(progress.unlocked, Math.min(no + 1, TOTAL_STAGES)) };
+  // unlocked は超上級 12 をクリアすると TOTAL_STAGES + 1 になり、それでエンドレスが開く
+  return { ...progress, unlocked: Math.max(progress.unlocked, Math.min(no + 1, TOTAL_STAGES + 1)) };
 }
 // 隠し要素：全ステージを開放する（超上級 12 まで遊べて、エンドレスも開く。すでに先へ進んでいれば変えない）
-export const unlockAll = (progress) => ({ ...progress, unlocked: TOTAL_STAGES });
+export const unlockAll = (progress) => ({ ...progress, unlocked: TOTAL_STAGES + 1 });
 
 // エンドレスで何ステージ続けてクリアしたか
 export const endlessCleared = (progress) => Math.max(0, progress.endless - ENDLESS_FIRST);
 
 // ステージごとの難しさ。colors: 色の数、cap: 棚に並べる数、empty: 空き棚の数、hidden: ？になる割合
 // cap はスマホでもねこが小さくなりすぎないよう、どのステージでも 4 にそろえる（難しさは色の数と？で上げる）
-// エンドレスは上級 12 と同じ難しさで、盤面だけが毎回変わる
+// エンドレスは超上級 12 と同じ難しさ（先頭以外ぜんぶ？）で、盤面だけが毎回変わる
 export function stageConfig(no) {
   if (isEndless(no)) return stageConfig(LAST_REGULAR);
   if (isDaily(no)) return { ...DAILY_CONFIG[dailyDate(no).getDay()], cap: 4, empty: 2 };

@@ -52,7 +52,7 @@ function save(key, v) {
     /* 保存できない環境では何もしない */
   }
 }
-const LAST_REGULAR = stageNo(ENDLESS_LEVEL, STAGES_PER_LEVEL); // 上級 12：クリアするとエンドレスと超上級が開く
+const LAST_REGULAR = stageNo(ENDLESS_LEVEL, STAGES_PER_LEVEL); // 超上級 12：クリアするとエンドレスが開く
 const bestKey = (no) => `neko-best-s${no}`; // ステージ（通し番号）ごとの自己ベスト
 const starKey = (no) => `neko-star-s${no}`; // ステージごとの★の最高
 
@@ -89,7 +89,7 @@ function startState(no) {
 export default function App() {
   // 進み具合：通常ステージは遊べる最後の通し番号、エンドレスは遊べる最後のステージ（上級 13〜）
   const [progress, setProgress] = useState(() => ({
-    unlocked: Math.min(load("neko-stage-unlocked") || load("neko-unlocked") || 1, TOTAL_STAGES), // 以前の「レベル」の進み具合を引き継ぐ
+    unlocked: Math.min(load("neko-stage-unlocked") || load("neko-unlocked") || 1, TOTAL_STAGES + 1), // 以前の「レベル」の進み具合を引き継ぐ
     endless: Math.max(load("neko-endless") || ENDLESS_FIRST, ENDLESS_FIRST),
   }));
   // 説明文の表示（初期値はオフ。選んだ設定は localStorage に残す）
@@ -124,7 +124,7 @@ export default function App() {
   const prev = prevStage(no);
   const next = nextStage(no);
   const [picking, setPicking] = useState(false); // ステージ選択画面
-  const [openedNow, setOpenedNow] = useState(false); // いまエンドレスと超上級が開いた
+  const [openedNow, setOpenedNow] = useState(false); // いまエンドレスが開いた
 
   // 隠し要素：タイトル「ねこだな」を素早く 7 回タップすると、超上級 12 まで全ステージが開く
   const [toast, setToast] = useState(null);
@@ -434,7 +434,7 @@ export default function App() {
               {info.endless && <><br />エンドレス {info.stage - STAGES_PER_LEVEL} 回目クリア</>}
             </p>
             {info.daily && <p className="win-news">今日の1問 {todayStreak()} 日連続</p>}
-            {openedNow && <p className="win-news">エンドレスと超上級が遊べるようになりました！</p>}
+            {openedNow && <p className="win-news">エンドレスが遊べるようになりました！</p>}
             {shareImg ? (
               <img className="share-preview" src={shareImg.url} alt={`${info.label}の完成した棚`} />
             ) : (
@@ -470,11 +470,6 @@ export default function App() {
                 いつものステージへ
               </button>
             )}
-            {no === LAST_REGULAR && (
-              <button className="primary alt" onClick={() => goStage(stageNo(ENDLESS_LEVEL + 1, 1))}>
-                {LEVELS[ENDLESS_LEVEL + 1].name}へ進む
-              </button>
-            )}
             <button onClick={() => setPicking(true)}>ステージを選ぶ</button>
             <button onClick={() => goStage(no)}>もう一度</button>
           </div>
@@ -484,7 +479,7 @@ export default function App() {
   );
 }
 
-// ステージ選択：レベルのタブと 12 ステージのボタン。上級のタブには、上級 12 のクリア後にエンドレスの入り口が出る
+// ステージ選択：レベルのタブと 12 ステージのボタン。超上級のタブには、超上級 12 のクリア後にエンドレスの入り口が出る
 function StagePicker({ current, progress, today, onPick, onClose }) {
   const [tab, setTab] = useState(() => stageInfo(isDaily(current) ? lastStage() : current).levelIndex);
   const todayInfo = stageInfo(today);
@@ -550,10 +545,10 @@ function StagePicker({ current, progress, today, onPick, onClose }) {
                 <span>
                   ∞ エンドレス　<b>ステージ{progress.endless}</b>から
                 </span>
-                <span className="sub">{cleared > 0 ? `${cleared} 回クリア` : "上級12 の続き"}</span>
+                <span className="sub">{cleared > 0 ? `${cleared} 回クリア` : "超上級12 の続き"}</span>
               </>
             ) : (
-              <span>🔒 エンドレス（上級12 をクリアで開放）</span>
+              <span>🔒 エンドレス（超上級12 をクリアで開放）</span>
             )}
           </button>
         )}
