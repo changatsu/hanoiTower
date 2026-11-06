@@ -24,7 +24,8 @@ const FLIP = "matrix(-1 0 0 1 116 0)"; // viewBox の中心 x=58 で左右反転
 
 // flip: 右側の棚用に左右反転する。文字（しるし）は反転させないので、図形だけを <g> で反転する。
 // （CSS の transform で SVG ごと反転させると、iOS Safari で文字の位置がずれるため）
-export function Cat({ color, hidden, happy, flip }) {
+// acc: 身につけるもの（きせかえ）、sleep: ねぼすけねこ（眠っている）、heavy: どっしりねこ
+export function Cat({ color, hidden, happy, flip, acc, sleep, heavy }) {
   if (hidden) return <HiddenCat />;
   const c = CAT_COLORS[color];
   return (
@@ -53,7 +54,12 @@ export function Cat({ color, hidden, happy, flip }) {
         )}
         <ellipse cx="34" cy="45" rx="5" ry="3" fill="#ff8fa3" opacity="0.45" />
         <ellipse cx="66" cy="45" rx="5" ry="3" fill="#ff8fa3" opacity="0.45" />
-        {happy ? (
+        {sleep && !happy ? (
+          <g fill="none" stroke={c.ink} strokeWidth="2.6" strokeLinecap="round">
+            <path d="M35 37 Q40 41 45 37" />
+            <path d="M55 37 Q60 41 65 37" />
+          </g>
+        ) : happy ? (
           <g fill="none" stroke={c.ink} strokeWidth="2.6" strokeLinecap="round">
             <path d="M35 38 Q40 32 45 38" />
             <path d="M55 38 Q60 32 65 38" />
@@ -79,7 +85,21 @@ export function Cat({ color, hidden, happy, flip }) {
         {/* 首輪としるし */}
         <path d="M36 58 Q50 64 64 58" fill="none" stroke={c.collar} strokeWidth="4" strokeLinecap="round" />
         <circle cx="50" cy="67" r="7" fill="#fff8e6" stroke={c.ink} strokeWidth="1.5" />
+        {acc && <Accessory id={acc} />}
       </g>
+      {sleep && (
+        <text x={flip ? 30 : 86} y="22" textAnchor="middle" fontSize="17" fontWeight="700" fill="#cfe3ff" stroke="#2c2846" strokeWidth="0.6">
+          Zz
+        </text>
+      )}
+      {heavy && (
+        <g>
+          <circle cx={flip ? 66 : 50} cy="84" r="12" fill="#5a4a3a" stroke="#fff3d6" strokeWidth="2" />
+          <text x={flip ? 66 : 50} y="89.5" textAnchor="middle" fontSize="15" fontWeight="700" fill="#fff3d6">
+            重
+          </text>
+        </g>
+      )}
       <text x={flip ? 66 : 50} y="70.5" textAnchor="middle" fontSize="10" fill={c.ink} fontWeight="700">
         {c.mark}
       </text>
@@ -105,4 +125,72 @@ function HiddenCat() {
       </text>
     </svg>
   );
+}
+
+// きせかえの小物（ねこの絵と同じ座標。左右反転の <g> の中で描く）
+function Accessory({ id }) {
+  switch (id) {
+    case "ribbon":
+      return (
+        <g stroke="#a3244d" strokeWidth="1.2" strokeLinejoin="round">
+          <path d="M66 22 L57 15 L58 28 Z" fill="#ff5d8f" />
+          <path d="M66 22 L75 15 L74 28 Z" fill="#ff5d8f" />
+          <circle cx="66" cy="22" r="3" fill="#ff86aa" />
+        </g>
+      );
+    case "flower":
+      return (
+        <g>
+          {[0, 72, 144, 216, 288].map((a) => (
+            <circle key={a} cx={34 + 4.2 * Math.cos((a * Math.PI) / 180)} cy={20 + 4.2 * Math.sin((a * Math.PI) / 180)} r="3.4" fill="#fff" stroke="#e6a3b7" strokeWidth="0.8" />
+          ))}
+          <circle cx="34" cy="20" r="2.6" fill="#ffd34d" />
+        </g>
+      );
+    case "scarf":
+      return (
+        <g fill="#d9433b" stroke="#8f231d" strokeWidth="1.2" strokeLinejoin="round">
+          <path d="M33 55 Q50 64 67 55 L68 61 Q50 70 32 61 Z" />
+          <path d="M58 62 L66 61 L69 78 L61 79 Z" />
+          <path d="M61 79 L69 78" stroke="#fff" strokeWidth="1.5" strokeDasharray="1.5 1.5" />
+        </g>
+      );
+    case "glasses":
+      return (
+        <g fill="rgba(255,255,255,0.18)" stroke="#2a2a2a" strokeWidth="2">
+          <circle cx="40" cy="37" r="8" />
+          <circle cx="60" cy="37" r="8" />
+          <path d="M48 37 Q50 35 52 37 M32 36 L25 34 M68 36 L75 34" fill="none" />
+        </g>
+      );
+    case "star":
+      return (
+        <path
+          d="M64 10 L66.4 15.6 L72.4 16 L67.8 19.8 L69.3 25.6 L64 22.4 L58.7 25.6 L60.2 19.8 L55.6 16 L61.6 15.6 Z"
+          fill="#ffd34d"
+          stroke="#b8860b"
+          strokeWidth="1"
+          strokeLinejoin="round"
+        />
+      );
+    case "hat":
+      return (
+        <g stroke="#111" strokeWidth="1.2">
+          <rect x="39" y="2" width="22" height="15" rx="2" fill="#2b2b3a" />
+          <rect x="39" y="12" width="22" height="3.5" fill="#d9433b" />
+          <ellipse cx="50" cy="17.5" rx="18" ry="3.5" fill="#2b2b3a" />
+        </g>
+      );
+    case "crown":
+      return (
+        <g>
+          <path d="M36 19 L36 8 L43 13 L50 3 L57 13 L64 8 L64 19 Z" fill="#ffcf3f" stroke="#a87400" strokeWidth="1.3" strokeLinejoin="round" />
+          <circle cx="50" cy="14" r="2.2" fill="#e2574c" />
+          <circle cx="42" cy="16" r="1.6" fill="#4f8fc9" />
+          <circle cx="58" cy="16" r="1.6" fill="#4a9a6e" />
+        </g>
+      );
+    default:
+      return null;
+  }
 }

@@ -91,8 +91,8 @@ export function svgToPngBlob(svgText) {
 
 // 画像つきで共有する。共有シート（LINE を選べる）が使えなければ、LINE の文字だけの共有を開く。
 // 戻り値: "shared" | "cancelled" | "line-text"
-export async function shareResult({ file, label, moves, stars = "", streak = 0 }) {
-  const text = shareText(label, moves, stars, streak);
+export async function shareResult({ file, label, moves, stars = "", streak = 0, text: customText }) {
+  const text = customText ? `${customText}\n${GAME_URL}` : shareText(label, moves, stars, streak);
   if (file && navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file], text });

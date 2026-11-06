@@ -20,6 +20,15 @@ import {
   STAGES_PER_LEVEL,
   TOTAL_STAGES,
   dailyNo,
+  isTimeAttack,
+  taNo,
+  TA_SECONDS,
+  wakeFront,
+  isAsleep,
+  hintMove,
+  ACCESSORIES,
+  isAccessoryOpen,
+  needText,
   dailyStreak,
   isDaily,
   starsFor,
@@ -45,6 +54,13 @@ function load(key) {
     return null;
   }
 }
+function loadStr(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
 function save(key, v) {
   try {
     localStorage.setItem(key, String(v));
@@ -66,6 +82,19 @@ function starsOf(no) {
   save(starKey(no), stars);
   return stars;
 }
+const HINTS_PER_DAY = 3;
+const hintKey = () => `neko-hints-${dailyNo()}`; // その日に使ったヒントの数
+// きせかえの条件に使う記録
+function playerStats() {
+  let stars = 0;
+  for (let n = 1; n <= TOTAL_STAGES; n++) stars += starsOf(n);
+  return { stars, streak: Math.max(load("neko-streak-best") || 0, todayStreak()), ta: load("neko-ta-best") || 0 };
+}
+// 特別なねこが初めて出てきたときの説明
+const SPECIAL_INTRO = {
+  sleep: "ねぼすけねこ（Zz）は、先頭に来ても眠っていて動かせません。タップして起こすと（1手）動かせます。",
+  heavy: "どっしりねこ（重）は重いので、1匹ずつしか動きません。",
+};
 const lastStage = () => normalizeNo(load("neko-stage") || 1); // いつものステージ（今日の1問に入る前のステージ）
 const todayStreak = () => dailyStreak((d) => load(bestKey(d)) !== null);
 
@@ -125,6 +154,18 @@ export default function App() {
   const next = nextStage(no);
   const [picking, setPicking] = useState(false); // ステージ選択画面
   const [openedNow, setOpenedNow] = useState(false); // いまエンドレスが開いた
+  const [hint, setHint] = useState(null); // ヒントで光らせる 1 手
+  const [hintsUsed, setHintsUsed] = useState(() => load(hintKey()) || 0);
+  // ねこが身につけるもの（手に入れていないものは身につけない）
+  const [acc, setAcc] = useState(() => {
+    const a = ACCESSORIES.find((x) => x.id === loadStr("neko-acc"));
+    return a && isAccessoryOpen(a, playerStats()) ? a.id : "";
+  });
+  const [dressing, setDressing] = useState(false); // きせかえ画面
+  // タイムアタック：{ seed, endsAt, solved }。終わったら taResult に結果
+  const [ta, setTa] = useState(null);
+  const [taResult, setTaResult] = useState(null);
+  const [now, setNow] = useState(() => Date.now());
 
   // 隠し要素：タイトル「ねこだな」を素早く 7 回タップすると、超上級 12 まで全ステージが開く
   const [toast, setToast] = useState(null);
@@ -181,9 +222,11 @@ export default function App() {
   const goStage = useCallback((lv) => {
     setGame(startState(lv));
     setSelected(null);
+    setHint(null);
     setOpenedNow(false);
+    if (!isTimeAttack(lv)) setTa(null); // ほかのステージへ移ったらタイムアタックは終わり
     setBest(load(bestKey(lv)));
-    if (!isDaily(lv)) save("neko-stage", lv); // 今日の1問は「いつものステージ」として覚えない
+    if (!isDaily(lv) && !isTimeAttack(lv)) save("neko-stage", lv); // 今日の1問とタイムアタックは「いつものステージ」として覚えない
   }, []);
 
   // クリアしたら共有用の画像を先に作っておく（共有ボタンを押した瞬間に共有シートを開けるように）
@@ -210,6 +253,15 @@ export default function App() {
   // クリアしたら自己ベストと次のステージを記録
   useEffect(() => {
     if (!won) return;
+    if (isTimeAttack(no)) {
+      // タイムアタック：記録は残さず、すぐ次の問題へ
+      if (!ta) return;
+      const solved = ta.solved + 1;
+      setTa({ ...ta, solved });
+      const t = setTimeout(() => goStage(taNo(ta.seed, solved)), 700);
+      return () => clearTimeout(t);
+    }
+    if (isDaily(no)) save("neko-streak-best", Math.max(load("neko-streak-best") || 0, todayStreak()));
     const prev = load(bestKey(no));
     if (prev === null || moves < prev) {
       save(bestKey(no), moves);
@@ -223,9 +275,88 @@ export default function App() {
     setProgress(next);
   }, [won]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // タイムアタックの残り時間
+  useEffect(() => {
+    if (!ta) return;
+    const id = setInterval(() => {
+      const t = Date.now();
+      setNow(t);
+      if (t >= ta.endsAt) {
+        clearInterval(id);
+        const solved = ta.solved;
+        const prevBest = load("neko-ta-best") || 0;
+        if (solved > prevBest) save("neko-ta-best", solved);
+        setTaResult({ solved, best: Math.max(prevBest, solved), record: solved > prevBest });
+        setTa(null);
+        setSelected(null);
+        sfx.win();
+      }
+    }, 250);
+    return () => clearInterval(id);
+  }, [ta]);
+  const startTimeAttack = () => {
+    const seed = Math.floor(Math.random() * 10000);
+    setPicking(false);
+    setTaResult(null);
+    goStage(taNo(seed, 0));
+    setTa({ seed, endsAt: Date.now() + TA_SECONDS * 1000, solved: 0 });
+    setNow(Date.now());
+  };
+  const timeLeft = ta ? Math.max(0, Math.ceil((ta.endsAt - now) / 1000)) : 0;
+  const taOver = isTimeAttack(no) && !ta; // 時間切れのあと
+
+  // 特別なねこが初めて出てきたら説明する
+  useEffect(() => {
+    const kinds = ["sleep", "heavy"].filter((k) => shelves.some((sh) => sh.some((c) => c[k])) && !load(`neko-seen-${k}`));
+    if (kinds.length === 0) return;
+    kinds.forEach((k) => save(`neko-seen-${k}`, 1));
+    setToast(kinds.map((k) => SPECIAL_INTRO[k]).join("\n"));
+    const t = setTimeout(() => setToast(null), 6000);
+    return () => clearTimeout(t);
+  }, [no]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ヒント：1 日 3 回まで、次の 1 手を光らせる
+  const hintsLeft = Math.max(0, HINTS_PER_DAY - hintsUsed);
+  const useHint = () => {
+    if (won || taOver) return;
+    if (hintsLeft === 0) {
+      setToast("今日のヒントは使い切りました。また明日！");
+      setTimeout(() => setToast(null), 2500);
+      return;
+    }
+    const h = hintMove(shelves, cap);
+    if (!h) return;
+    if (h.stuck) {
+      setToast("このままでは解けません。「1手戻す」か「やり直し」をどうぞ（ヒントは減りません）");
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
+    const used = hintsUsed + 1;
+    save(hintKey(), used);
+    setHintsUsed(used);
+    setSelected(null);
+    setHint(h);
+    sfx.reveal();
+  };
+
+  // ねぼすけねこを起こす（1 手）
+  const wake = (i) => {
+    const next = wakeFront(shelves, i);
+    if (!next) return false;
+    setGame({ ...game, shelves: next, history: [...history, shelves], moved: new Set(), revealed: new Set([shelves[i][shelves[i].length - 1].id]) });
+    setSelected(null);
+    setHint(null);
+    sfx.reveal();
+    return true;
+  };
+
   const tapShelf = (i) => {
-    if (won) return;
+    if (won || taOver) return;
     if (selected === null) {
+      if (isAsleep(shelves[i])) {
+        wake(i);
+        return;
+      }
       if (shelves[i].length === 0 || isShelfComplete(shelves[i], cap)) return;
       setSelected(i);
       sfx.pick();
@@ -247,10 +378,13 @@ export default function App() {
       });
       setGame({ ...game, shelves: next, history: [...history, shelves], moved, revealed });
       setSelected(null);
+      setHint(null);
       sfx.drop(shelves[selected][shelves[selected].length - 1].color);
       if (revealed.size > 0) sfx.reveal();
       if (isSolved(next, cap)) sfx.win();
       else if (isShelfComplete(next[i], cap)) sfx.complete();
+    } else if (isAsleep(shelves[i])) {
+      wake(i);
     } else if (shelves[i].length > 0 && !isShelfComplete(shelves[i], cap)) {
       setSelected(i); // 置けない棚をタップしたら、そちらを選び直す
       sfx.pick();
@@ -272,6 +406,7 @@ export default function App() {
       revealed: new Set(),
     });
     setSelected(null);
+    setHint(null);
   };
 
   const targets = useMemo(() => {
@@ -299,9 +434,10 @@ export default function App() {
         {/* タイトル行：右にベストと説明の切り替えを小さく置く */}
         <div className="title-row">
           <h1 onClick={tapTitle}>ねこだな</h1>
-          <span className="best">
-            ベスト <b>{best ?? "–"}</b>
-          </span>
+          {/* ヒント：1 日 3 回。数字は今日の残り */}
+          <button className="help-toggle hint-btn" onClick={useHint} disabled={won || taOver} aria-label={`ヒント（今日はあと ${hintsLeft} 回）`}>
+            💡<b>{hintsLeft}</b>
+          </button>
           {/* オン／オフは枠の光り方で示す（狭い画面でも 1 行に収めるため文字は短く） */}
           <button className="help-toggle" onClick={toggleHelp} aria-pressed={showHelp} aria-label={`説明 ${showHelp ? "オン" : "オフ"}`}>
             説明
@@ -329,13 +465,20 @@ export default function App() {
               ›
             </button>
           </div>
-          <span className="moves">
-            手数<b>{moves}</b>
-          </span>
+          {ta || taOver ? (
+            <span className={`moves timer${timeLeft <= 10 && ta ? " hurry" : ""}`} aria-label={`残り ${timeLeft} 秒、${ta?.solved ?? 0} 問クリア`}>
+              {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, "0")}
+              <b>✓{ta?.solved ?? taResult?.solved ?? 0}</b>
+            </span>
+          ) : (
+            <span className="moves">
+              手数<b>{moves}</b>
+            </span>
+          )}
           <button className={`act${stuck ? " nudge" : ""}`} onClick={undo} disabled={moves === 0 || won}>
             1手戻す
           </button>
-          <button className={`act${stuck ? " nudge" : ""}`} onClick={() => goStage(no)} disabled={moves === 0}>
+          <button className={`act${stuck ? " nudge" : ""}`} onClick={() => goStage(no)} disabled={moves === 0 || taOver}>
             やり直し
           </button>
         </div>
@@ -354,7 +497,7 @@ export default function App() {
             shelf.length === 0
               ? `棚${i + 1}：空き`
               : `棚${i + 1}：` +
-                shelf.map((c) => (c.hidden ? "？" : CAT_COLORS[c.color].name)).join("、") +
+                shelf.map((c) => (c.hidden ? "？" : CAT_COLORS[c.color].name + (c.sleep ? "（ねぼすけ）" : c.heavy ? "（どっしり）" : ""))).join("、") +
                 `（先頭は${CAT_COLORS[shelf[shelf.length - 1].color].name}）`;
           return (
             <button
@@ -366,6 +509,8 @@ export default function App() {
                 targets.has(i) && "target",
                 complete && "complete",
                 shake === i && "shake",
+                hint && (hint.from === i || hint.wake === i) && "hint-from",
+                hint && hint.to === i && "hint-to",
               ]
                 .filter(Boolean)
                 .join(" ")}
@@ -387,7 +532,7 @@ export default function App() {
                       .filter(Boolean)
                       .join(" ")}
                   >
-                    <Cat color={c.color} hidden={c.hidden} happy={complete || won} flip={i % 2 === 1} />
+                    <Cat color={c.color} hidden={c.hidden} happy={complete || won} flip={i % 2 === 1} acc={acc} sleep={c.sleep} heavy={c.heavy} />
                   </div>
                 ))}
               </div>
@@ -414,11 +559,67 @@ export default function App() {
             setPicking(false);
             goStage(n);
           }}
+          onTimeAttack={startTimeAttack}
+          onDress={() => {
+            setPicking(false);
+            setDressing(true);
+          }}
           onClose={() => setPicking(false)}
         />
       )}
 
-      {won && !picking && (
+      {dressing && (
+        <Wardrobe
+          current={acc}
+          onPick={(id) => {
+            setAcc(id);
+            try {
+              localStorage.setItem("neko-acc", id);
+            } catch {
+              /* 保存できない環境では何もしない */
+            }
+          }}
+          onClose={() => setDressing(false)}
+        />
+      )}
+
+      {taResult && !picking && !dressing && (
+        <div className="win" role="dialog" aria-label="タイムアタックの結果">
+          <div className="win-card">
+            <p className="win-sub">タイムアタック（{TA_SECONDS / 60}分）</p>
+            <p className="win-title">{taResult.solved} 問クリア！</p>
+            <p>
+              {taResult.record ? "新記録！" : `ベスト ${taResult.best} 問`}
+            </p>
+            <div className="win-cats" aria-hidden="true">
+              {[3, 6, 8].map((c) => (
+                <div key={c} className="cat">
+                  <Cat color={c} happy acc={acc} />
+                </div>
+              ))}
+            </div>
+            <button
+              className="line"
+              onClick={() => shareResult({ text: `ねこだな タイムアタック ${TA_SECONDS / 60}分で${taResult.solved}問クリア！` })}
+            >
+              LINEで送る
+            </button>
+            <button className="primary" onClick={startTimeAttack}>
+              もう一度
+            </button>
+            <button
+              onClick={() => {
+                setTaResult(null);
+                goStage(lastStage());
+              }}
+            >
+              いつものステージへ
+            </button>
+          </div>
+        </div>
+      )}
+
+      {won && !picking && !isTimeAttack(no) && (
         <div className="win" role="dialog" aria-label="クリア">
           <div className="win-card">
             <p className="win-sub">
@@ -441,7 +642,7 @@ export default function App() {
               <div className="win-cats" aria-hidden="true">
                 {[0, 2, 7].map((c) => (
                   <div key={c} className="cat">
-                    <Cat color={c} happy />
+                    <Cat color={c} happy acc={acc} />
                   </div>
                 ))}
               </div>
@@ -480,8 +681,9 @@ export default function App() {
 }
 
 // ステージ選択：レベルのタブと 12 ステージのボタン。超上級のタブには、超上級 12 のクリア後にエンドレスの入り口が出る
-function StagePicker({ current, progress, today, onPick, onClose }) {
-  const [tab, setTab] = useState(() => stageInfo(isDaily(current) ? lastStage() : current).levelIndex);
+function StagePicker({ current, progress, today, onPick, onTimeAttack, onDress, onClose }) {
+  const [tab, setTab] = useState(() => stageInfo(isDaily(current) || isTimeAttack(current) ? lastStage() : current).levelIndex);
+  const taBest = load("neko-ta-best");
   const todayInfo = stageInfo(today);
   const todayBest = load(bestKey(today));
   const streak = todayStreak();
@@ -506,6 +708,13 @@ function StagePicker({ current, progress, today, onPick, onClose }) {
             )}
             {streak > 0 && `・${streak} 日連続`}
           </span>
+        </button>
+        {/* タイムアタック：3 分で何問解けるか */}
+        <button className="daily-entry ta-entry" onClick={onTimeAttack}>
+          <span>
+            ⏱ タイムアタック　<b>{TA_SECONDS / 60}分</b>
+          </span>
+          <span className="sub">{taBest ? `ベスト ${taBest} 問` : "3分で何問解けるか挑戦"}</span>
         </button>
         <div className="tabs" role="tablist">
           {LEVELS.map((lv, i) => (
@@ -552,6 +761,50 @@ function StagePicker({ current, progress, today, onPick, onClose }) {
             )}
           </button>
         )}
+        <div className="picker-foot">
+          <button onClick={onDress}>👒 きせかえ</button>
+          <button onClick={onClose}>とじる</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// きせかえ（ねこ図鑑）：★や記録で手に入るものを、ねこに身につけさせる
+function Wardrobe({ current, onPick, onClose }) {
+  const stats = useMemo(() => playerStats(), []);
+  return (
+    <div className="win" role="dialog" aria-label="きせかえ" onClick={onClose}>
+      <div className="win-card picker" onClick={(e) => e.stopPropagation()}>
+        <p className="win-title">きせかえ</p>
+        <p className="wardrobe-stats">
+          ★ {stats.stars} / {TOTAL_STAGES * 3}・連続 {stats.streak} 日・タイムアタック {stats.ta} 問
+        </p>
+        <div className="wardrobe-grid">
+          <button className={current === "" ? "current" : ""} onClick={() => onPick("")}>
+            <span className="cat">
+              <Cat color={2} />
+            </span>
+            <span className="sub">なし</span>
+          </button>
+          {ACCESSORIES.map((a) => {
+            const open = isAccessoryOpen(a, stats);
+            return (
+              <button
+                key={a.id}
+                className={current === a.id ? "current" : ""}
+                disabled={!open}
+                onClick={() => onPick(a.id)}
+                aria-label={`${a.name}${open ? "" : `（${needText(a.need)}と手に入ります）`}`}
+              >
+                <span className={`cat${open ? "" : " locked"}`}>
+                  <Cat color={2} acc={a.id} />
+                </span>
+                <span className="sub">{open ? a.name : `🔒 ${needText(a.need)}`}</span>
+              </button>
+            );
+          })}
+        </div>
         <button onClick={onClose}>とじる</button>
       </div>
     </div>

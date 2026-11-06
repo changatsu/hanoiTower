@@ -18,6 +18,12 @@ import {
   endlessCleared,
   normalizeNo,
   unlockAll,
+  wakeFront,
+  hintMove,
+  taNo,
+  isTimeAttack,
+  ACCESSORIES,
+  isAccessoryOpen,
   minMoves,
   starTargets,
   starsFor,
@@ -244,4 +250,78 @@ test("今日の1問の連続日数", () => {
   assert.equal(dailyStreak(has, new Date(2026, 10, 8)), 0);
   // 月をまたいでも続く
   assert.equal(dailyStreak((d) => [20261031, 20261101].includes(d), new Date(2026, 10, 1)), 2);
+});
+
+test("ねぼすけねこ：先頭で眠っていると動かせず、起こすと動かせる", () => {
+  const shelves = [[cat(0), { ...cat(1), sleep: true }], [cat(1)], []];
+  assert.equal(frontRun(shelves[0]), 0);
+  assert.equal(movableCount(shelves, 4, 0, 1), 0);
+  assert.equal(movableCount(shelves, 4, 1, 0), 1); // 眠っているねこの上には置ける
+  assert.equal(hasAnyMove([[{ ...cat(1), sleep: true }], [cat(2)]], 4), true); // 起こせば動ける
+  const woke = wakeFront(shelves, 0);
+  assert.equal(woke[0][1].sleep, false);
+  assert.equal(movableCount(woke, 4, 0, 1), 1);
+  assert.equal(wakeFront(woke, 0), null);
+});
+
+test("どっしりねこ：1 匹ずつしか動かない", () => {
+  const heavyFront = [[cat(1), cat(1), { ...cat(1), heavy: true }], []];
+  assert.equal(frontRun(heavyFront[0]), 1);
+  const heavyBehind = [[cat(0), { ...cat(1), heavy: true }, cat(1), cat(1)], []];
+  assert.equal(frontRun(heavyBehind[0]), 2); // どっしりねこの手前で止まる
+});
+
+test("特別なねこは中級 7 から出てきて、★の目標にその分の余裕が入る", () => {
+  assert.deepEqual([stageConfig(18).sleepy, stageConfig(18).heavy], [0, 0]); // 中級 6
+  assert.deepEqual([stageConfig(19).sleepy, stageConfig(19).heavy], [1, 0]); // 中級 7
+  assert.deepEqual([stageConfig(31).sleepy, stageConfig(31).heavy], [2, 1]); // 上級 7
+  assert.deepEqual([stageConfig(48).sleepy, stageConfig(48).heavy], [2, 2]);
+  const a = createStage(48);
+  const flat = a.shelves.flat();
+  assert.equal(flat.filter((c) => c.sleep).length, 2);
+  assert.equal(flat.filter((c) => c.heavy).length, 2);
+  assert.equal(stageConfig(1).sleepy, 0);
+  assert.equal(createStage(1).shelves.flat().some((c) => c.sleep || c.heavy), false);
+});
+
+test("ヒントは解ける 1 手を返し、それに従えば解ける", () => {
+  for (const no of [5, 19, 31, 48]) {
+    let { shelves, cap } = createStage(no);
+    for (let step = 0; step < 200 && !isSolved(shelves, cap); step++) {
+      const h = hintMove(shelves, cap);
+      assert.ok(h && !h.stuck, `stage ${no} step ${step}`);
+      shelves = h.wake !== undefined ? wakeFront(shelves, h.wake) : applyMove(shelves, cap, h.from, h.to);
+      assert.ok(shelves);
+    }
+    assert.equal(isSolved(shelves, cap), true, `stage ${no}`);
+    assert.equal(hintMove(shelves, cap), null);
+  }
+  // 解けない盤面
+  assert.deepEqual(hintMove([[cat(0), cat(1)], [cat(1), cat(0)]], 2), { stuck: true });
+});
+
+test("タイムアタック：問題ごとに少しずつ難しくなり、記録や進み具合には影響しない", () => {
+  const a = taNo(1234, 0);
+  const b = taNo(1234, 5);
+  assert.equal(isTimeAttack(a), true);
+  assert.equal(stageInfo(b).label, "タイムアタック 6問目");
+  assert.ok(stageConfig(b).colors > stageConfig(a).colors);
+  assert.equal(stageConfig(taNo(1, 40)).colors, 9);
+  assert.equal(prevStage(a), null);
+  assert.equal(nextStage(a), null);
+  assert.equal(normalizeNo(a), 1);
+  assert.deepEqual(afterClear(a, { unlocked: 2, endless: 13 }), { unlocked: 2, endless: 13 });
+  assert.equal(isSolvable(createStage(b).shelves.map((s) => s.map((c) => c.color)), 4), true);
+  assert.notDeepEqual(colorsOf(createStage(taNo(1, 0)).shelves), colorsOf(createStage(taNo(2, 0)).shelves));
+});
+
+test("きせかえは★・連続日数・タイムアタックの記録で手に入る", () => {
+  const byId = Object.fromEntries(ACCESSORIES.map((a) => [a.id, a]));
+  const none = { stars: 0, streak: 0, ta: 0 };
+  assert.equal(ACCESSORIES.some((a) => isAccessoryOpen(a, none)), false);
+  assert.equal(isAccessoryOpen(byId.ribbon, { ...none, stars: 10 }), true);
+  assert.equal(isAccessoryOpen(byId.scarf, { ...none, streak: 3 }), true);
+  assert.equal(isAccessoryOpen(byId.star, { ...none, ta: 5 }), true);
+  assert.equal(isAccessoryOpen(byId.crown, { ...none, stars: 143 }), false);
+  assert.equal(isAccessoryOpen(byId.crown, { ...none, stars: 144 }), true);
 });

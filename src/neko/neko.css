@@ -406,6 +406,7 @@ button { font: inherit; color: inherit; }
   color: var(--glow);
   font-size: 13px;
   text-align: center;
+  white-space: pre-line;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
   animation: fade 0.3s ease-out;
   z-index: 10;
@@ -423,3 +424,39 @@ button { font: inherit; color: inherit; }
   .bar button.act { font-size: 12px; }
   .level-picker .stage-name { font-size: 12px; }
 }
+
+/* ---- ヒント ---- */
+.title-row .hint-btn b { font-size: 12px; margin-left: 2px; }
+.shelf.hint-from { animation: hint-glow 0.9s ease-in-out infinite alternate; box-shadow: 0 0 0 2px #7ad7ff inset; }
+.shelf.hint-to { box-shadow: 0 0 0 2px #7ad7ff inset; background: rgba(122, 215, 255, 0.12); }
+@keyframes hint-glow {
+  from { background: rgba(122, 215, 255, 0.05); }
+  to { background: rgba(122, 215, 255, 0.25); }
+}
+
+/* ---- タイムアタック ---- */
+.bar .moves.timer { font-variant-numeric: tabular-nums; color: var(--ink); }
+.bar .moves.timer.hurry { color: #ff8a8a; }
+.win-card button.ta-entry { margin-top: 8px; }
+
+/* ---- ステージ選択の下のボタン ---- */
+.picker-foot { display: flex; gap: 8px; }
+.picker-foot button { flex: 1; }
+
+/* ---- きせかえ ---- */
+.wardrobe-stats { font-size: 12px; color: var(--muted); margin: 4px 0 10px; }
+.wardrobe-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 6px; }
+.win-card .wardrobe-grid button {
+  margin: 0;
+  padding: 6px 2px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.15;
+}
+.wardrobe-grid .cat { display: block; width: 46px; }
+.wardrobe-grid .cat.locked { filter: grayscale(1) brightness(0.6); }
+.wardrobe-grid .sub { font-size: 10px; color: var(--muted); font-weight: 500; margin-top: 2px; min-height: 2.3em; }
+.wardrobe-grid button.current { background: rgba(255, 210, 122, 0.18); border-color: var(--glow); }
+.wardrobe-grid button:disabled { opacity: 0.75; }
