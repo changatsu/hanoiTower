@@ -1,0 +1,668 @@
+/* お昼の学食：クリーム色の壁、オレンジの暖簾、木のカウンター */
+:root {
+  --bg: #fff6e8;
+  --bg-2: #ffe9c7;
+  --ink: #3b2a1e;
+  --muted: #8a7462;
+  --card: #ffffff;
+  --line: #ecd8bb;
+  --accent: #e8632b;
+  --accent-ink: #ffffff;
+  --accent-soft: #ffe1cf;
+  --good: #2f9e5b;
+  --warn: #e6a21a;
+  --bad: #d9433a;
+  --wood: #c98d55;
+  --wood-dark: #8f5a2c;
+  --tray: #6b4a33;
+  --select: #2a7fd4;
+  --font-display: "Dela Gothic One", "Hiragino Kaku Gothic StdN", sans-serif;
+  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+body {
+  margin: 0;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  background: linear-gradient(var(--bg), var(--bg-2));
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+
+.app {
+  height: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+.screen {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 12px 10px;
+  position: relative;
+}
+
+/* ---------- タイトル ---------- */
+.title-screen { gap: 14px; padding-top: 16px; overflow-y: auto; }
+.title-head { display: flex; align-items: flex-start; justify-content: space-between; }
+.title-head h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 34px;
+  line-height: 1.15;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+.title-sub {
+  display: block;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+}
+.mode-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mode-tab {
+  border: 2px solid var(--line);
+  background: var(--card);
+  border-radius: 16px;
+  padding: 14px 8px;
+  font-weight: 700;
+  font-size: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.mode-tab.on { border-color: var(--accent); background: var(--accent-soft); }
+.mode-emoji { font-size: 40px; line-height: 1; }
+.mode-desc { margin: 0; font-size: 14px; line-height: 1.7; color: var(--ink); min-height: 4.8em; }
+.levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.level {
+  border: 2px solid var(--line);
+  background: var(--card);
+  border-radius: 12px;
+  padding: 10px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.level.on { border-color: var(--accent); background: var(--accent-soft); }
+.level-name { font-weight: 700; }
+.level-best { font-size: 12px; color: var(--muted); }
+.primary {
+  border: 0;
+  border-radius: 14px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+  font-size: 18px;
+  padding: 14px;
+  box-shadow: 0 4px 0 #b84616;
+}
+.primary:active { transform: translateY(2px); box-shadow: 0 2px 0 #b84616; }
+.ghost { border: 0; background: none; color: var(--muted); font-weight: 700; padding: 10px; }
+.links { margin-top: auto; display: flex; gap: 16px; justify-content: center; font-size: 14px; }
+.links a { color: var(--muted); }
+
+/* ---------- 上の帯 ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+.icon-btn {
+  border: 2px solid var(--line);
+  background: var(--card);
+  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+  line-height: 1;
+  flex: none;
+}
+.mode-tag { font-weight: 700; color: var(--accent); white-space: nowrap; }
+.clock { white-space: nowrap; margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 18px; }
+.clock.hurry { color: var(--bad); }
+.score { font-family: var(--font-display); font-size: 22px; min-width: 4.5em; text-align: right; font-variant-numeric: tabular-nums; }
+.score small { font-family: var(--font-body); font-size: 12px; margin-left: 2px; }
+
+.placeholder { margin: auto; color: var(--muted); font-size: 14px; }
+
+.timebar {
+  display: block;
+  height: 6px;
+  width: 100%;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+.timebar > span { display: block; height: 100%; border-radius: 3px; background: var(--good); transition: width 0.2s linear; }
+.timebar.warn > span { background: var(--warn); }
+.timebar.danger > span { background: var(--bad); }
+
+.toast-line { height: 26px; flex: none; display: flex; align-items: center; justify-content: center; }
+.toast {
+  font-size: 14px;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  animation: pop 0.25s ease-out;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.toast.serve, .toast.restock { background: var(--good); }
+.toast.ng, .toast.wrong, .toast.burn, .toast.late, .toast.leave { background: var(--bad); }
+.toast.request { background: var(--select); }
+@keyframes pop { from { transform: scale(0.85); opacity: 0; } }
+
+/* ---------- キッチン（真上から見た厨房） ---------- */
+.screen.kitchen {
+  /* 床のタイル */
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px) 0 0 / 28px 28px,
+    #e9e4dc;
+}
+
+/* 注文票：天井のレールにクリップで留めた伝票 */
+.tickets {
+  position: relative;
+  display: flex;
+  gap: 6px;
+  min-height: 80px;
+  flex: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 8px 6px 4px;
+  background: linear-gradient(#b9bec4, #9aa1a8) top / 100% 8px no-repeat;
+  border-radius: 6px;
+}
+.ticket {
+  position: relative;
+  flex: 0 0 auto;
+  width: 84px;
+  border: 0;
+  background: #fffdf6;
+  border-radius: 2px 2px 6px 6px;
+  padding: 8px 6px 7px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transform-origin: 50% 0;
+}
+.ticket::before {
+  /* クリップ */
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 22px;
+  height: 9px;
+  margin-left: -11px;
+  border-radius: 3px;
+  background: linear-gradient(#e0e3e6, #8c949b);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+}
+.ticket.on { outline: 3px solid var(--select); outline-offset: -1px; }
+.ticket.hurry { animation: swing 0.6s ease-in-out infinite; }
+.ticket-emoji { font-size: 26px; line-height: 1; }
+.ticket-name { font-size: 12px; font-weight: 700; white-space: nowrap; }
+.ticket-badge {
+  position: absolute;
+  bottom: -4px;
+  right: -2px;
+  background: var(--select);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 1px 4px;
+}
+@keyframes shake { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-2deg); } 75% { transform: rotate(2deg); } }
+@keyframes swing { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-4deg); } 75% { transform: rotate(4deg); } }
+
+/* ステンレスの調理台に、コンロが 2 口 */
+.boards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 240px;
+  padding: 8px;
+  border-radius: 14px;
+  background:
+    repeating-linear-gradient(100deg, rgba(255, 255, 255, 0.18) 0 2px, transparent 2px 7px),
+    linear-gradient(135deg, #d5d9dd, #b7bdc3 60%, #cfd3d7);
+  box-shadow: inset 0 0 0 3px #a3aab1, 0 3px 6px rgba(0, 0, 0, 0.15);
+}
+.board {
+  background: #3a3d42;
+  border: 3px solid #2a2c30;
+  border-radius: 12px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 0;
+  overflow: hidden;
+  cursor: pointer;
+  color: #f4f1ee;
+}
+.board.selected { border-color: var(--select); box-shadow: 0 0 0 2px rgba(42, 127, 212, 0.35); }
+.board-head { display: flex; align-items: center; gap: 4px; min-height: 24px; }
+.board-no { font-size: 11px; font-weight: 700; color: #fff; background: #6b7078; border-radius: 6px; padding: 1px 5px; flex: none; }
+.board.selected .board-no { background: var(--select); }
+.board-dish { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.board-clear {
+  margin-left: auto;
+  border: 0;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  flex: none;
+}
+
+/* コンロ：五徳と炎 */
+.stove { flex: 1 1 auto; min-height: 92px; display: flex; align-items: center; justify-content: center; }
+.burner {
+  position: relative;
+  width: min(100%, 132px);
+  aspect-ratio: 1;
+  max-height: 100%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #1d1e21 0 16%, #55585e 17% 20%, #1d1e21 21% 60%, #4a4d53 61% 64%, #26282b 65%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.burner::before {
+  /* 五徳の爪 */
+  content: "";
+  position: absolute;
+  inset: 4%;
+  background:
+    linear-gradient(#6a6e75, #6a6e75) center / 8% 100% no-repeat,
+    linear-gradient(90deg, #6a6e75, #6a6e75) center / 100% 8% no-repeat;
+  border-radius: 50%;
+  opacity: 0.7;
+}
+.flame {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  opacity: 0;
+  z-index: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  background: repeating-conic-gradient(from 0deg, #4aa3ff 0 5deg, #ff9b2e 5deg 7deg, transparent 7deg 13deg);
+  -webkit-mask: radial-gradient(circle closest-side, transparent 0 84%, #000 86% 99%, transparent 100%);
+  mask: radial-gradient(circle closest-side, transparent 0 84%, #000 86% 99%, transparent 100%);
+}
+.stove.on .flame { opacity: 1; animation: flicker 0.25s steps(2) infinite; }
+@keyframes flicker { 50% { transform: rotate(7deg) scale(1.03); } }
+.stove-empty { position: relative; color: #9da2a8; font-size: 12px; font-weight: 700; text-align: center; white-space: pre-line; }
+
+/* 道具（真上から） */
+.vessel {
+  position: relative;
+  width: 84%;
+  height: 84%;
+  border-radius: 50%;
+  z-index: 1;
+}
+.vessel-pot {
+  /* 寸胴鍋：取っ手が左右に 2 つ */
+  background: radial-gradient(circle, #e9d3a6 0 60%, #c7ccd2 62% 70%, #8f969e 72%);
+  box-shadow: -10px 0 0 -6px #7d848b, 10px 0 0 -6px #7d848b;
+}
+.vessel-pot.cooked { background: radial-gradient(circle, #c9893f 0 60%, #c7ccd2 62% 70%, #8f969e 72%); }
+.vessel-pan {
+  /* フライパン：右下に長い柄 */
+  background: radial-gradient(circle, #50545a 0 64%, #2b2d31 66%);
+}
+.vessel-pan::after {
+  content: "";
+  position: absolute;
+  width: 46%;
+  height: 12%;
+  right: -38%;
+  bottom: 6%;
+  border-radius: 6px;
+  background: #6b4a33;
+  transform: rotate(35deg);
+  transform-origin: 0 50%;
+}
+.vessel-fryer {
+  /* 揚げ鍋：油 */
+  background: radial-gradient(circle, #f2c14e 0 40%, #e0a52c 60%, #c7ccd2 63% 70%, #8f969e 72%);
+}
+.vessel-board {
+  /* まな板 */
+  width: 92%;
+  height: 70%;
+  border-radius: 8px;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.05) 0 2px, transparent 2px 6px),
+    #e2b97f;
+  box-shadow: 0 2px 0 #b98a4f;
+}
+.vessel-plate {
+  background: radial-gradient(circle, #ffffff 0 52%, #f0ece6 54% 66%, #ffffff 68%);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+.food {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 26px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
+  animation: drop 0.25s ease-out;
+}
+.vessel.cooked .food { filter: sepia(0.5) saturate(1.3) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35)); }
+@keyframes drop { from { transform: translate(-50%, -90%) scale(1.4); opacity: 0; } }
+.stove.on .food { animation: jiggle 0.4s ease-in-out infinite; }
+@keyframes jiggle { 50% { transform: translate(-50%, -56%) rotate(6deg); } }
+.heat-ring { position: absolute; inset: -6%; width: 112%; height: 112%; transform: rotate(-90deg); pointer-events: none; }
+.heat-ring circle { fill: none; stroke: #ffb02e; stroke-width: 5; stroke-linecap: round; }
+.stove.smoke .vessel { animation: smoke 0.8s ease-in-out infinite; }
+@keyframes smoke { 50% { box-shadow: 0 0 0 6px rgba(217, 67, 58, 0.55); } }
+
+/* レシピのメモ（コンロの横に貼った紙） */
+.steps { list-style: none; margin: 0; padding: 4px; display: flex; flex-direction: column; gap: 2px; background: #fffdf6; border-radius: 6px; color: var(--ink); flex: none; }
+.step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+  padding: 1px 4px;
+  border-radius: 5px;
+  font-size: 11px;
+  overflow: hidden;
+}
+.step.done { opacity: 0.35; text-decoration: line-through; }
+.step.now { background: var(--accent-soft); box-shadow: 0 0 0 2px var(--accent) inset; }
+.step-ings { display: flex; gap: 1px; min-height: 18px; align-items: center; }
+.chip { font-size: 15px; line-height: 1; filter: grayscale(1); opacity: 0.45; }
+.chip.in { filter: none; opacity: 1; }
+.step.todo .chip { filter: none; opacity: 0.8; }
+.step-proc { font-weight: 700; white-space: nowrap; }
+.heat { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: rgba(0, 0, 0, 0.06); }
+.heat > span { display: block; height: 100%; background: var(--warn); }
+.burn {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--bad);
+  border-radius: 8px;
+  padding: 2px 6px;
+  text-align: center;
+  animation: blink 0.8s steps(2) infinite;
+  flex: none;
+}
+@keyframes blink { 50% { opacity: 0.6; } }
+
+/* 食材：調理台に並べたバット（真上から） */
+.palette { flex: none; display: flex; flex-direction: column; gap: 6px; }
+.ing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+  gap: 4px;
+  padding: 6px;
+  border-radius: 12px;
+  background:
+    repeating-linear-gradient(100deg, rgba(255, 255, 255, 0.18) 0 2px, transparent 2px 7px),
+    linear-gradient(135deg, #d5d9dd, #b7bdc3 60%, #cfd3d7);
+  box-shadow: inset 0 0 0 3px #a3aab1;
+}
+.ing {
+  border: 3px solid #9aa1a8;
+  background: linear-gradient(135deg, #f4f6f7, #dfe3e6);
+  border-radius: 8px;
+  padding: 3px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.18);
+}
+.ing:active, .proc:active, .item-main:active { transform: scale(0.94); }
+.ing.need { border-color: var(--accent); background: linear-gradient(135deg, #fff3ea, #ffd9c2); }
+.ing-emoji { font-size: 24px; line-height: 1.1; }
+.ing-name { font-size: 10px; font-weight: 700; white-space: nowrap; }
+
+/* 調理ボタン：道具を真上から見た形 */
+.proc-grid { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; }
+.proc {
+  position: relative;
+  border: 0;
+  background: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.proc-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
+}
+.proc-name { font-size: 12px; font-weight: 700; color: var(--ink); }
+.proc-cut .proc-icon { border-radius: 8px; width: 52px; height: 40px; margin: 3px 0; background: #e2b97f; box-shadow: 0 2px 0 #b98a4f; }
+.proc-fry .proc-icon, .proc-grill .proc-icon { background: radial-gradient(circle, #50545a 0 62%, #2b2d31 64%); }
+.proc-grill .proc-icon { background: repeating-linear-gradient(90deg, #2b2d31 0 4px, #50545a 4px 8px); border: 3px solid #2b2d31; }
+.proc-boil .proc-icon { background: radial-gradient(circle, #9ad0f0 0 58%, #c7ccd2 60% 70%, #8f969e 72%); }
+.proc-deep .proc-icon { background: radial-gradient(circle, #f2c14e 0 50%, #c7ccd2 53% 68%, #8f969e 70%); }
+.proc-plate .proc-icon { background: radial-gradient(circle, #ffffff 0 50%, #f0ece6 52% 64%, #ffffff 66%); box-shadow: 0 0 0 3px var(--accent), 0 2px 3px rgba(0, 0, 0, 0.3); }
+
+/* ---------- カウンター ---------- */
+.queue { display: flex; gap: 6px; align-items: flex-end; min-height: 56px; flex: none; }
+.student { width: 52px; display: flex; flex-direction: column; align-items: center; gap: 3px; opacity: 0.75; }
+.student.front { width: 64px; opacity: 1; }
+.face { font-size: 30px; line-height: 1; }
+.student.front .face { font-size: 40px; }
+
+.slip {
+  flex: none;
+  background: #fffdf6;
+  border-radius: 8px;
+  padding: 6px 10px 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  border-left: 6px solid var(--accent);
+  min-height: 74px;
+  display: flex;
+  flex-direction: column;
+}
+.slip h3 { margin: 0 0 4px; font-size: 16px; }
+.slip ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.slip li {
+  font-size: 13px;
+  font-weight: 700;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  padding: 1px 8px;
+  background: #fff;
+}
+.slip li.none { color: var(--muted); border-style: dashed; font-weight: 500; }
+.slip li.ok { border-color: var(--good); background: #e5f6eb; }
+.slip li.ok::after { content: " ✓"; color: var(--good); }
+
+.tray-wrap { flex: 1 0 auto; display: flex; flex-direction: column; gap: 6px; }
+.tray {
+  flex: 1 1 auto;
+  min-height: 112px;
+  max-height: 200px;
+  background: var(--tray);
+  border-radius: 16px;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1.25fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 6px;
+  box-shadow: inset 0 0 0 4px rgba(255, 255, 255, 0.12);
+}
+.slot {
+  border: 2px dashed rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 0;
+  min-width: 0;
+}
+.slot.slot-main { border-radius: 14px; }
+.slot.filled { border: 2px solid transparent; background: #fbf7f2; color: var(--ink); }
+.slot.wrong { border-color: var(--bad); background: #ffe3e0; animation: shake 0.3s 2; }
+.slot-name { font-size: 11px; font-weight: 700; }
+.dish { font-size: 30px; line-height: 1; }
+.dish.big { font-size: 38px; }
+.dish-name { font-size: 10px; font-weight: 700; }
+.chopsticks { display: flex; align-items: center; justify-content: center; font-size: 26px; transform: rotate(-20deg); }
+.serve-btn {
+  border: 0;
+  border-radius: 14px;
+  background: var(--good);
+  color: #fff;
+  font-weight: 700;
+  font-size: 18px;
+  padding: 10px;
+  box-shadow: 0 4px 0 #1f7442;
+  flex: none;
+}
+.serve-btn:disabled { opacity: 0.4; }
+.serve-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 2px 0 #1f7442; }
+
+.shelf { flex: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 4px; }
+.item {
+  background: var(--card);
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.item.slot-main { border-color: #f2b48f; }
+.item.slot-rice { border-color: #e6d9b8; }
+.item.slot-soup { border-color: #d8b88e; }
+.item.slot-side { border-color: #a9d7a0; }
+.item.slot-drink { border-color: #9fc7e6; }
+.item-main {
+  border: 0;
+  background: none;
+  padding: 4px 2px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.item-emoji { font-size: 22px; line-height: 1.1; }
+.item-emoji.big { font-size: 26px; line-height: 1; }
+.item-name { font-size: 10px; font-weight: 700; white-space: nowrap; letter-spacing: -0.04em; }
+.item-stock {
+  display: block;
+  border: 0;
+  width: 100%;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  padding: 3px 0;
+  background: #f3ece3;
+  color: var(--muted);
+}
+.item.low { border-color: var(--warn); }
+.item.out .item-main { opacity: 0.35; }
+.item-stock.request { background: var(--warn); color: #fff; animation: blink 1s steps(2) infinite; }
+.item-stock.waiting { background: var(--select); color: #fff; }
+.requests { margin: 0; font-size: 11px; color: var(--select); font-weight: 700; flex: none; text-align: center; }
+
+/* ---------- 重ね表示 ---------- */
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(59, 42, 30, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 10;
+}
+.dialog {
+  background: var(--bg);
+  border-radius: 20px;
+  padding: 20px;
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: center;
+  animation: pop 0.25s ease-out;
+}
+.dialog h2 { margin: 0; font-size: 20px; }
+.stars { margin: 0; font-size: 40px; letter-spacing: 6px; color: #e2d6c6; }
+.stars .on { color: #f5b301; }
+.result-score { margin: 0; font-family: var(--font-display); font-size: 44px; color: var(--accent); }
+.result-score small { font-family: var(--font-body); font-size: 16px; }
+.stats { margin: 0 0 6px; display: grid; gap: 4px; }
+.stats div { display: flex; justify-content: space-between; font-size: 14px; border-bottom: 1px dashed var(--line); padding: 2px 0; }
+.stats dt { color: var(--muted); }
+.stats dd { margin: 0; font-weight: 700; }
+
+.screen.counter, .screen.kitchen { overflow-y: auto; }
+
+/* 背の低い画面では少し詰める */
+@media (max-height: 700px) {
+  .screen { gap: 5px; }
+  .tickets { min-height: 70px; }
+  .ing-emoji, .item-emoji { font-size: 20px; }
+  .proc-icon { width: 40px; height: 40px; }
+  .stove { min-height: 80px; }
+  .slip { min-height: 64px; }
+}
+@media (max-width: 360px) {
+  .mode-tag { display: none; }
+  .screen { padding-left: 8px; padding-right: 8px; }
+  .ing-grid { grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); padding: 4px; gap: 3px; }
+  .ing { border-width: 2px; }
+  .ing-emoji { font-size: 19px; }
+  .ing-name { font-size: 9px; letter-spacing: -0.05em; }
+  .proc-icon { width: 38px; height: 38px; font-size: 18px; }
+  .proc-cut .proc-icon { width: 42px; height: 32px; }
+  .proc-name { font-size: 11px; }
+}
