@@ -177,37 +177,63 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .toast.request { background: var(--select); }
 @keyframes pop { from { transform: scale(0.85); opacity: 0; } }
 
-/* ---------- キッチン ---------- */
+/* ---------- キッチン（真上から見た厨房） ---------- */
+.screen.kitchen {
+  /* 床のタイル */
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px) 0 0 / 28px 28px,
+    #e9e4dc;
+}
+
+/* 注文票：天井のレールにクリップで留めた伝票 */
 .tickets {
+  position: relative;
   display: flex;
   gap: 6px;
-  min-height: 78px;
+  min-height: 80px;
   flex: none;
   overflow-x: auto;
   scrollbar-width: none;
+  padding: 8px 6px 4px;
+  background: linear-gradient(#b9bec4, #9aa1a8) top / 100% 8px no-repeat;
+  border-radius: 6px;
 }
 .ticket {
   position: relative;
   flex: 0 0 auto;
-  width: 86px;
+  width: 84px;
   border: 0;
   background: #fffdf6;
-  border-radius: 6px;
-  padding: 6px 6px 8px;
+  border-radius: 2px 2px 6px 6px;
+  padding: 8px 6px 7px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-  border-top: 5px solid var(--accent);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transform-origin: 50% 0;
+}
+.ticket::before {
+  /* クリップ */
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 22px;
+  height: 9px;
+  margin-left: -11px;
+  border-radius: 3px;
+  background: linear-gradient(#e0e3e6, #8c949b);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
 }
 .ticket.on { outline: 3px solid var(--select); outline-offset: -1px; }
-.ticket.hurry { animation: shake 0.6s ease-in-out infinite; }
+.ticket.hurry { animation: swing 0.6s ease-in-out infinite; }
 .ticket-emoji { font-size: 26px; line-height: 1; }
 .ticket-name { font-size: 12px; font-weight: 700; white-space: nowrap; }
 .ticket-badge {
   position: absolute;
-  top: -4px;
+  bottom: -4px;
   right: -2px;
   background: var(--select);
   color: #fff;
@@ -217,104 +243,251 @@ button { font: inherit; color: inherit; cursor: pointer; }
   padding: 1px 4px;
 }
 @keyframes shake { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-2deg); } 75% { transform: rotate(2deg); } }
+@keyframes swing { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-4deg); } 75% { transform: rotate(4deg); } }
 
-.boards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 1 1 auto; min-height: 0; }
-.board {
-  background: #f4f1ee;
-  border: 3px solid #d9d2ca;
+/* ステンレスの調理台に、コンロが 2 口 */
+.boards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 240px;
+  padding: 8px;
   border-radius: 14px;
+  background:
+    repeating-linear-gradient(100deg, rgba(255, 255, 255, 0.18) 0 2px, transparent 2px 7px),
+    linear-gradient(135deg, #d5d9dd, #b7bdc3 60%, #cfd3d7);
+  box-shadow: inset 0 0 0 3px #a3aab1, 0 3px 6px rgba(0, 0, 0, 0.15);
+}
+.board {
+  background: #3a3d42;
+  border: 3px solid #2a2c30;
+  border-radius: 12px;
   padding: 6px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
   min-height: 0;
   overflow: hidden;
   cursor: pointer;
+  color: #f4f1ee;
 }
-.board.selected { border-color: var(--select); background: #eef5fd; }
-.board-head { display: flex; align-items: center; gap: 4px; min-height: 26px; }
-.board-no { font-size: 11px; font-weight: 700; color: #fff; background: #8b8178; border-radius: 6px; padding: 1px 5px; flex: none; }
+.board.selected { border-color: var(--select); box-shadow: 0 0 0 2px rgba(42, 127, 212, 0.35); }
+.board-head { display: flex; align-items: center; gap: 4px; min-height: 24px; }
+.board-no { font-size: 11px; font-weight: 700; color: #fff; background: #6b7078; border-radius: 6px; padding: 1px 5px; flex: none; }
 .board.selected .board-no { background: var(--select); }
-.board-dish { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.board-dish { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .board-clear {
   margin-left: auto;
   border: 0;
-  background: rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
   border-radius: 50%;
   width: 24px;
   height: 24px;
   font-size: 12px;
   flex: none;
 }
-.board-empty { margin: auto; color: var(--muted); font-size: 13px; text-align: center; }
-.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+
+/* コンロ：五徳と炎 */
+.stove { flex: 1 1 auto; min-height: 92px; display: flex; align-items: center; justify-content: center; }
+.burner {
+  position: relative;
+  width: min(100%, 132px);
+  aspect-ratio: 1;
+  max-height: 100%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #1d1e21 0 16%, #55585e 17% 20%, #1d1e21 21% 60%, #4a4d53 61% 64%, #26282b 65%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.burner::before {
+  /* 五徳の爪 */
+  content: "";
+  position: absolute;
+  inset: 4%;
+  background:
+    linear-gradient(#6a6e75, #6a6e75) center / 8% 100% no-repeat,
+    linear-gradient(90deg, #6a6e75, #6a6e75) center / 100% 8% no-repeat;
+  border-radius: 50%;
+  opacity: 0.7;
+}
+.flame {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  opacity: 0;
+  z-index: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  background: repeating-conic-gradient(from 0deg, #4aa3ff 0 5deg, #ff9b2e 5deg 7deg, transparent 7deg 13deg);
+  -webkit-mask: radial-gradient(circle closest-side, transparent 0 84%, #000 86% 99%, transparent 100%);
+  mask: radial-gradient(circle closest-side, transparent 0 84%, #000 86% 99%, transparent 100%);
+}
+.stove.on .flame { opacity: 1; animation: flicker 0.25s steps(2) infinite; }
+@keyframes flicker { 50% { transform: rotate(7deg) scale(1.03); } }
+.stove-empty { position: relative; color: #9da2a8; font-size: 12px; font-weight: 700; text-align: center; white-space: pre-line; }
+
+/* 道具（真上から） */
+.vessel {
+  position: relative;
+  width: 84%;
+  height: 84%;
+  border-radius: 50%;
+  z-index: 1;
+}
+.vessel-pot {
+  /* 寸胴鍋：取っ手が左右に 2 つ */
+  background: radial-gradient(circle, #e9d3a6 0 60%, #c7ccd2 62% 70%, #8f969e 72%);
+  box-shadow: -10px 0 0 -6px #7d848b, 10px 0 0 -6px #7d848b;
+}
+.vessel-pot.cooked { background: radial-gradient(circle, #c9893f 0 60%, #c7ccd2 62% 70%, #8f969e 72%); }
+.vessel-pan {
+  /* フライパン：右下に長い柄 */
+  background: radial-gradient(circle, #50545a 0 64%, #2b2d31 66%);
+}
+.vessel-pan::after {
+  content: "";
+  position: absolute;
+  width: 46%;
+  height: 12%;
+  right: -38%;
+  bottom: 6%;
+  border-radius: 6px;
+  background: #6b4a33;
+  transform: rotate(35deg);
+  transform-origin: 0 50%;
+}
+.vessel-fryer {
+  /* 揚げ鍋：油 */
+  background: radial-gradient(circle, #f2c14e 0 40%, #e0a52c 60%, #c7ccd2 63% 70%, #8f969e 72%);
+}
+.vessel-board {
+  /* まな板 */
+  width: 92%;
+  height: 70%;
+  border-radius: 8px;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.05) 0 2px, transparent 2px 6px),
+    #e2b97f;
+  box-shadow: 0 2px 0 #b98a4f;
+}
+.vessel-plate {
+  background: radial-gradient(circle, #ffffff 0 52%, #f0ece6 54% 66%, #ffffff 68%);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+.food {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 26px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
+  animation: drop 0.25s ease-out;
+}
+.vessel.cooked .food { filter: sepia(0.5) saturate(1.3) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35)); }
+@keyframes drop { from { transform: translate(-50%, -90%) scale(1.4); opacity: 0; } }
+.stove.on .food { animation: jiggle 0.4s ease-in-out infinite; }
+@keyframes jiggle { 50% { transform: translate(-50%, -56%) rotate(6deg); } }
+.heat-ring { position: absolute; inset: -6%; width: 112%; height: 112%; transform: rotate(-90deg); pointer-events: none; }
+.heat-ring circle { fill: none; stroke: #ffb02e; stroke-width: 5; stroke-linecap: round; }
+.stove.smoke .vessel { animation: smoke 0.8s ease-in-out infinite; }
+@keyframes smoke { 50% { box-shadow: 0 0 0 6px rgba(217, 67, 58, 0.55); } }
+
+/* レシピのメモ（コンロの横に貼った紙） */
+.steps { list-style: none; margin: 0; padding: 4px; display: flex; flex-direction: column; gap: 2px; background: #fffdf6; border-radius: 6px; color: var(--ink); flex: none; }
 .step {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 2px;
-  padding: 3px 4px;
-  border-radius: 8px;
-  font-size: 12px;
-  background: rgba(255, 255, 255, 0.6);
+  padding: 1px 4px;
+  border-radius: 5px;
+  font-size: 11px;
   overflow: hidden;
 }
-.step.done { opacity: 0.4; }
-.step.now { background: #fff; box-shadow: 0 0 0 2px var(--accent) inset; }
-.step-ings { display: flex; gap: 1px; min-height: 22px; align-items: center; }
-.chip { font-size: 18px; line-height: 1; filter: grayscale(1); opacity: 0.45; }
+.step.done { opacity: 0.35; text-decoration: line-through; }
+.step.now { background: var(--accent-soft); box-shadow: 0 0 0 2px var(--accent) inset; }
+.step-ings { display: flex; gap: 1px; min-height: 18px; align-items: center; }
+.chip { font-size: 15px; line-height: 1; filter: grayscale(1); opacity: 0.45; }
 .chip.in { filter: none; opacity: 1; }
 .step.todo .chip { filter: none; opacity: 0.8; }
 .step-proc { font-weight: 700; white-space: nowrap; }
-.heat { position: absolute; left: 0; bottom: 0; height: 4px; width: 100%; background: rgba(0, 0, 0, 0.06); }
+.heat { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: rgba(0, 0, 0, 0.06); }
 .heat > span { display: block; height: 100%; background: var(--warn); }
-.board.busy .step.now { animation: simmer 0.8s ease-in-out infinite; }
-@keyframes simmer { 50% { background: #fff1dc; } }
 .burn {
-  margin-top: auto;
   font-size: 12px;
   font-weight: 700;
   color: #fff;
   background: var(--bad);
   border-radius: 8px;
-  padding: 3px 6px;
+  padding: 2px 6px;
   text-align: center;
   animation: blink 0.8s steps(2) infinite;
+  flex: none;
 }
 @keyframes blink { 50% { opacity: 0.6; } }
 
+/* 食材：調理台に並べたバット（真上から） */
 .palette { flex: none; display: flex; flex-direction: column; gap: 6px; }
-.ing-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 5px; }
-.ing {
-  border: 2px solid var(--line);
-  background: var(--card);
+.ing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+  gap: 4px;
+  padding: 6px;
   border-radius: 12px;
-  padding: 4px 2px;
+  background:
+    repeating-linear-gradient(100deg, rgba(255, 255, 255, 0.18) 0 2px, transparent 2px 7px),
+    linear-gradient(135deg, #d5d9dd, #b7bdc3 60%, #cfd3d7);
+  box-shadow: inset 0 0 0 3px #a3aab1;
+}
+.ing {
+  border: 3px solid #9aa1a8;
+  background: linear-gradient(135deg, #f4f6f7, #dfe3e6);
+  border-radius: 8px;
+  padding: 3px 2px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1px;
+  gap: 0;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.18);
 }
 .ing:active, .proc:active, .item-main:active { transform: scale(0.94); }
-.ing.need { border-color: var(--accent); background: var(--accent-soft); }
+.ing.need { border-color: var(--accent); background: linear-gradient(135deg, #fff3ea, #ffd9c2); }
 .ing-emoji { font-size: 24px; line-height: 1.1; }
 .ing-name { font-size: 10px; font-weight: 700; white-space: nowrap; }
-.proc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(48px, 1fr)); gap: 5px; }
+
+/* 調理ボタン：道具を真上から見た形 */
+.proc-grid { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; }
 .proc {
+  position: relative;
   border: 0;
-  border-radius: 12px;
-  background: var(--wood);
-  color: #fff;
-  padding: 6px 2px;
+  background: none;
+  padding: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  box-shadow: 0 3px 0 var(--wood-dark);
+  gap: 2px;
 }
-.proc-emoji { font-size: 22px; line-height: 1.1; }
-.proc-name { font-size: 12px; font-weight: 700; }
-.proc-plate { background: var(--accent); box-shadow: 0 3px 0 #b84616; }
+.proc-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
+}
+.proc-name { font-size: 12px; font-weight: 700; color: var(--ink); }
+.proc-cut .proc-icon { border-radius: 8px; width: 52px; height: 40px; margin: 3px 0; background: #e2b97f; box-shadow: 0 2px 0 #b98a4f; }
+.proc-fry .proc-icon, .proc-grill .proc-icon { background: radial-gradient(circle, #50545a 0 62%, #2b2d31 64%); }
+.proc-grill .proc-icon { background: repeating-linear-gradient(90deg, #2b2d31 0 4px, #50545a 4px 8px); border: 3px solid #2b2d31; }
+.proc-boil .proc-icon { background: radial-gradient(circle, #9ad0f0 0 58%, #c7ccd2 60% 70%, #8f969e 72%); }
+.proc-deep .proc-icon { background: radial-gradient(circle, #f2c14e 0 50%, #c7ccd2 53% 68%, #8f969e 70%); }
+.proc-plate .proc-icon { background: radial-gradient(circle, #ffffff 0 50%, #f0ece6 52% 64%, #ffffff 66%); box-shadow: 0 0 0 3px var(--accent), 0 2px 3px rgba(0, 0, 0, 0.3); }
 
 /* ---------- カウンター ---------- */
 .queue { display: flex; gap: 6px; align-items: flex-end; min-height: 56px; flex: none; }
@@ -471,16 +644,25 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .stats dt { color: var(--muted); }
 .stats dd { margin: 0; font-weight: 700; }
 
-.screen.counter { overflow-y: auto; }
+.screen.counter, .screen.kitchen { overflow-y: auto; }
 
 /* 背の低い画面では少し詰める */
 @media (max-height: 700px) {
   .screen { gap: 5px; }
   .tickets { min-height: 70px; }
   .ing-emoji, .item-emoji { font-size: 20px; }
-  .proc { padding: 4px 2px; }
+  .proc-icon { width: 40px; height: 40px; }
+  .stove { min-height: 80px; }
   .slip { min-height: 64px; }
 }
 @media (max-width: 360px) {
   .mode-tag { display: none; }
+  .screen { padding-left: 8px; padding-right: 8px; }
+  .ing-grid { grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); padding: 4px; gap: 3px; }
+  .ing { border-width: 2px; }
+  .ing-emoji { font-size: 19px; }
+  .ing-name { font-size: 9px; letter-spacing: -0.05em; }
+  .proc-icon { width: 38px; height: 38px; font-size: 18px; }
+  .proc-cut .proc-icon { width: 42px; height: 32px; }
+  .proc-name { font-size: 11px; }
 }

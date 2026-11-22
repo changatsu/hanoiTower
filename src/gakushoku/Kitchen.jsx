@@ -82,7 +82,7 @@ export default function Kitchen({ level, onExit, onFinish }) {
         <div className="proc-grid">
           {palette.procs.map((k) => (
             <button key={k} className={`proc proc-${k}`} onClick={() => act(applyProc, k)}>
-              <span className="proc-emoji">{PROCS[k].emoji}</span>
+              <span className="proc-icon">{PROCS[k].emoji}</span>
               <span className="proc-name">{PROCS[k].name}</span>
             </button>
           ))}
@@ -106,6 +106,49 @@ export default function Kitchen({ level, onExit, onFinish }) {
           onExit={onExit}
         />
       )}
+    </div>
+  );
+}
+
+// 鍋の中の食材の置き場所（鍋の中心からの % 位置）
+const SPOTS = [
+  [0, 0], [-22, -14], [22, 14], [20, -20], [-20, 20], [0, -28], [0, 28], [-30, 2], [30, -2],
+];
+// 今の工程に合わせて、コンロに乗る道具を変える
+const VESSEL = { cut: "board", fry: "pan", grill: "pan", boil: "pot", deep: "fryer", plate: "plate" };
+
+// 真上から見たコンロ：五徳の上に道具、道具の中に入れた食材
+function Stove({ s, b, r, selected }) {
+  const step = r ? r.steps[Math.min(b.step, r.steps.length - 1)] : null;
+  const vessel = step ? VESSEL[step.proc] : null;
+  // 終わった工程の食材 + 今の工程で入れた食材
+  const inside = r ? [...r.steps.slice(0, b.step).flatMap((st) => st.ings), ...b.added] : [];
+  const cooked = r ? r.steps.slice(0, b.step).some((st) => PROCS[st.proc].dur > 0) : false;
+  const heatRatio = b.busy ? (s.t - b.busy.start) / (b.busy.end - b.busy.start) : 0;
+  return (
+    <div className={`stove${b.busy ? " on" : ""}${b.doneAt != null && !b.busy ? " smoke" : ""}`}>
+      <div className="burner">
+        <span className="flame" />
+        {vessel ? (
+          <div className={`vessel vessel-${vessel}${cooked ? " cooked" : ""}`}>
+            {inside.map((g, k) => {
+              const [x, y] = SPOTS[k % SPOTS.length];
+              return (
+                <span key={`${g}${k}`} className="food" style={{ left: `${50 + x}%`, top: `${50 + y}%` }}>
+                  {INGREDIENTS[g].emoji}
+                </span>
+              );
+            })}
+            {b.busy && (
+              <svg className="heat-ring" viewBox="0 0 100 100" aria-hidden="true">
+                <circle cx="50" cy="50" r="47" pathLength="100" strokeDasharray={`${heatRatio * 100} 100`} />
+              </svg>
+            )}
+          </div>
+        ) : (
+          <span className="stove-empty">{selected ? "注文票を\nタップ" : "空き"}</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -136,7 +179,7 @@ function Board({ s, b, i, selected, act }) {
           </button>
         )}
       </div>
-      {!r && <p className="board-empty">{selected ? "注文票をタップして乗せよう" : "空き"}</p>}
+      <Stove s={s} b={b} r={r} selected={selected} />
       {r && (
         <ol className="steps">
           {r.steps.map((st, j) => {
