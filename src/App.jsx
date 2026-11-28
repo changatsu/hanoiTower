@@ -209,6 +209,9 @@ export default function App() {
       <p className="other-game">
         <a href="./neko/">ねこの色仕分けパズル「ねこだな」で遊ぶ</a>
       </p>
+      <p className="other-game">
+        <a href="./jelly/">すべらせて出すパズル「ゼリーだっしゅつ」で遊ぶ</a>
+      </p>
     </div>
   );
 }
